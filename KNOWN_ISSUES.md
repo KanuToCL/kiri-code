@@ -29,6 +29,11 @@ Tracking what's broken, planned, or pending decision. Updated in the same commit
 
 ---
 
+## Watching (potential new backends)
+
+- **Ring-2.6-1T** (Ant Group, released ~2026-05) — 1T-param MoE, **63B active per token**, optimized for "coding agents, tool use, long-horizon." That use-case alignment matches `consult()` perfectly, and 63B active gives reasoning depth comparable to a dense 60B-class model. **Blocker:** no documented OpenAI-compatible REST endpoint yet, only self-deployment via SGLang (4+ nodes). Watch for hosted API. When available, add as Phase 4 backend (`RingDirectBackend`) — ~50 LOC adapter following the AnthropicDirect template.
+- **Future watch**: any frontier-class model with active params > 50B AND a clean API. Candidates worth re-evaluating as they release.
+
 ## Decisions deferred (from `PLAN.md` open questions)
 
 1. **Auto-invocation of `consult()` in autonomous loops**: deferred. Default in MVP is explicit user/agent invocation only.
