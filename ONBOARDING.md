@@ -51,6 +51,10 @@
 - [ ] Step 3 — .gitignore
 - [ ] Step 4 — README polish
 
+### Phase 7: `kiri init` repo bootstrap ⬜ TODO (independent — can run any time after Phase 1)
+- [ ] Step 1 — Templates (pre-commit-config, gitignore-additions, CLAUDE.md, PLAN.md)
+- [ ] Step 2 — `kiri init` subcommand with idempotency + non-clobber invariants
+
 ---
 
 ## Architecture Summary

@@ -48,8 +48,9 @@ Read the corresponding file before starting each phase. Each phase file is self-
 | `plan/PHASE-4-backends.md` | 4 | Additional backends (codex, gemini, direct Anthropic/OpenAI API). Each is a small adapter; the abstraction layer was already built in Phase 1. |
 | `plan/PHASE-5-notifications.md` | 5 | **Optional** — Telegram + other sinks for verdict push notifications. Skip if you don't need phone push; terminal output is primary. |
 | `plan/PHASE-6-hardening.md` | 6 | Rate limit, prompt versioning, gitignore, README polish. |
+| `plan/PHASE-7-init.md` | 7 | `kiri init` subcommand — bootstraps a new repo with guardrails (pre-commit config, .gitignore additions, CLAUDE.md/PLAN.md skeletons). |
 
-Do them in order. Each phase gates the next, except **Phase 5 is genuinely optional** — Phase 6 can run whether or not Phase 5 ships.
+Do them in order. Each phase gates the next, except **Phase 5 is genuinely optional** (Phase 6 runs whether or not it ships) and **Phase 7 can run any time after Phase 1** (it's a CLI subcommand, doesn't need the audit pipeline).
 
 ## Architecture decisions (read before Phase 1)
 
