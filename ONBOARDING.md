@@ -1,6 +1,6 @@
 # kiri-code — Status
 
-**Resume here:** Phase 1, Step 1 — package.json + tsconfig.json + vitest config. See `plan/PHASE-1-mvp.md`.
+**Resume here:** Phase 2, Step 1 — Locate kiri CLI path (design note). See `plan/PHASE-2-pi-extension.md`.
 
 ## Project Status: 🟡 PRE-ALPHA — design phase complete, implementation pending
 
@@ -14,13 +14,13 @@
 - [x] Step 1 — `scripts/probe-backends.sh` + KNOWN_ISSUES baseline
 - [x] Step 2 — Capture test-suite baseline
 
-### Phase 1: MVP (consult library + kiri CLI + claude backend) ⬜ TODO
-- [ ] Step 1 — package.json + tsconfig.json + vitest config
-- [ ] Step 2 — Types (ConsultArgs/Verdict/Finding/Backend)
-- [ ] Step 3 — Auditor prompt template
-- [ ] Step 4 — ClaudeBackend adapter
-- [ ] Step 5 — consult() library function
-- [ ] Step 6 — kiri CLI (commander)
+### Phase 1: MVP (consult library + kiri CLI + claude backend) ✅ done (`b2e132a..bb1a086`)
+- [x] Step 1 — package.json + tsconfig.json + vitest config
+- [x] Step 2 — Types (ConsultArgs/Verdict/Finding/Backend)
+- [x] Step 3 — Auditor prompt template
+- [x] Step 4 — ClaudeBackend adapter
+- [x] Step 5 — consult() library function
+- [x] Step 6 — kiri CLI (commander)
 
 ### Phase 2: Pi extension ⬜ TODO
 - [ ] Step 1 — Locate kiri CLI path (design note)
@@ -107,6 +107,7 @@ kiri-code/
 
 | Date | Commit | Summary |
 |---|---|---|
+| 2026-05-17 | bb1a086 | Phase 1 ✅ — MVP: types, ClaudeBackend, consult(), kiri CLI, 14 tests |
 | 2026-05-16 | 23c8306 | Phase 0 ✅ — probe script, baseline captured, test suite status recorded |
 | 2026-05-15 | (initial) | Repo scaffold, six-phase plan, discipline file. |
 
