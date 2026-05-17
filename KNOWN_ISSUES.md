@@ -29,6 +29,12 @@ Tracking what's broken, planned, or pending decision. Updated in the same commit
 
 ---
 
+## Phase 8 candidates (post-v0.1.0)
+
+- **Casebook auto-append**: auditor verdict carries optional `new_failure_class: bool` + `casebook_entry: <markdown>`. Kiri-code appends to `~/.claude/skills/verifiable-plan/CASEBOOK.md` on a separate commit when present. Closes the institutional-memory loop for bug patterns. ~30 LOC.
+- **Auto-memory append**: distinct from casebook (which is bug-specific). When the auditor or reviewer observes a *behavioral / process* pattern that generalizes across projects (e.g., "this executor model consistently skips meta-tests" or "two-machine workflow needs strict role separation"), kiri-code emits a memory-candidate frontmatter+body and appends to the user's auto-memory dir at `~/.claude/projects/<project>/memory/` plus a one-line index in `MEMORY.md`. Follows the same convention Claude Code's auto-memory uses. User gets a Telegram/terminal preview + accept-or-skip toggle before write (memory is global; cross-project blast radius warrants the confirm step). ~80 LOC.
+- **Why these are Phase 8 and not earlier**: both depend on a stable auditor verdict schema (Phase 1) and reviewed execution patterns (Phases 4–6 shipping enough audits to know what's worth memorizing). Premature.
+
 ## Watching (potential new backends)
 
 - **Ring-2.6-1T** (Ant Group, released ~2026-05) — 1T-param MoE, **63B active per token**, optimized for "coding agents, tool use, long-horizon." That use-case alignment matches `consult()` perfectly, and 63B active gives reasoning depth comparable to a dense 60B-class model. **Blocker:** no documented OpenAI-compatible REST endpoint yet, only self-deployment via SGLang (4+ nodes). Watch for hosted API. When available, add as Phase 4 backend (`RingDirectBackend`) — ~50 LOC adapter following the AnthropicDirect template.
