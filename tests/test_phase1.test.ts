@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFile } from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import { ClaudeBackend } from "../src/backends/claude.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,5 +26,65 @@ describe("auditor prompt template", () => {
   it("test_t1_3_template_under_token_budget", async () => {
     const tmpl = await readFile(path.resolve(__dirname, "../prompts/auditor.md"), "utf8");
     expect(tmpl.length).toBeLessThan(8000);   // ~2000 tokens budget
+  });
+});
+
+describe("ClaudeBackend", () => {
+  it("test_t1_4_claude_backend_name", () => {
+    const b = new ClaudeBackend();
+    expect(b.name).toBe("claude");
+  });
+
+  it("test_t1_4_claude_backend_available_when_cli_and_key_present", async () => {
+    const b = new ClaudeBackend();
+    const had_key = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = "test-key";
+    process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT = "1";   // backend reads this for testability
+    const ok = await b.available();
+    expect(ok).toBe(true);
+    if (had_key === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = had_key;
+    delete process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT;
+  });
+
+  it("test_t1_4_claude_backend_unavailable_without_key", async () => {
+    const b = new ClaudeBackend();
+    const had_key = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT = "1";
+    const ok = await b.available();
+    expect(ok).toBe(false);
+    if (had_key !== undefined) process.env.ANTHROPIC_API_KEY = had_key;
+    delete process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT;
+  });
+
+  it("test_t1_4_parse_verdict_from_stream_json", () => {
+    const b = new ClaudeBackend();
+    const stream = [
+      '{"type": "system"}',
+      '{"type": "result", "result": "done\\n\\n```json\\n{\\"status\\":\\"pass\\",\\"summary\\":\\"clean\\",\\"findings\\":[],\\"elapsedMs\\":1}\\n```"}',
+    ].join("\n");
+    const v = b.parseVerdict(stream);
+    expect(v?.status).toBe("pass");
+    expect(v?.summary).toBe("clean");
+  });
+
+  it("test_t1_4_parse_verdict_returns_null_when_missing", () => {
+    const b = new ClaudeBackend();
+    expect(b.parseVerdict("garbage")).toBeNull();
+    expect(b.parseVerdict("")).toBeNull();
+  });
+
+  it("test_t1_4_parse_verdict_takes_last_json_block", () => {
+    const b = new ClaudeBackend();
+    const finalText = '```json\n{"status":"error","summary":"first","findings":[],"elapsedMs":0}\n```\n```json\n{"status":"pass","summary":"last","findings":[],"elapsedMs":0}\n```';
+    const stream = JSON.stringify({ type: "result", result: finalText });
+    expect(b.parseVerdict(stream)?.status).toBe("pass");
+    expect(b.parseVerdict(stream)?.summary).toBe("last");
+  });
+
+  it("test_t1_4_parse_cost_from_result_event", () => {
+    const b = new ClaudeBackend();
+    const stream = '{"type":"result","result":"x","total_cost_usd":0.42}';
+    expect(b.parseCost(stream)).toBeCloseTo(0.42, 2);
   });
 });
