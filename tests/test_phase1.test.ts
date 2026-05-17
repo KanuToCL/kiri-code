@@ -3,6 +3,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import { ClaudeBackend } from "../src/backends/claude.js";
+import { consult } from "../src/consult.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,7 +26,7 @@ describe("auditor prompt template", () => {
 
   it("test_t1_3_template_under_token_budget", async () => {
     const tmpl = await readFile(path.resolve(__dirname, "../prompts/auditor.md"), "utf8");
-    expect(tmpl.length).toBeLessThan(8000);   // ~2000 tokens budget
+    expect(tmpl.length).toBeLessThan(8000);
   });
 });
 
@@ -39,7 +40,7 @@ describe("ClaudeBackend", () => {
     const b = new ClaudeBackend();
     const had_key = process.env.ANTHROPIC_API_KEY;
     process.env.ANTHROPIC_API_KEY = "test-key";
-    process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT = "1";   // backend reads this for testability
+    process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT = "1";
     const ok = await b.available();
     expect(ok).toBe(true);
     if (had_key === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = had_key;
@@ -86,5 +87,39 @@ describe("ClaudeBackend", () => {
     const b = new ClaudeBackend();
     const stream = '{"type":"result","result":"x","total_cost_usd":0.42}';
     expect(b.parseCost(stream)).toBeCloseTo(0.42, 2);
+  });
+});
+
+describe("consult()", () => {
+  it("test_t1_5_skipped_when_no_backend_available", async () => {
+    const had_key = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT;
+    const v = await consult({ phase: "0", repoRoot: "/tmp", timeoutSeconds: 5 });
+    expect(v.status).toBe("skipped");
+    expect(v.summary).toMatch(/no backend/i);
+    if (had_key !== undefined) process.env.ANTHROPIC_API_KEY = had_key;
+  });
+
+  it("test_t1_5_passes_through_verdict_from_mock_backend", async () => {
+    const fs = await import("fs/promises");
+    process.env.ANTHROPIC_API_KEY = "test-key";
+    process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT = "1";
+    // Mock backend: single-line stream-json with verdict in backtick block (no newlines in result to avoid split issues)
+    const script = path.resolve(__dirname, "../.tmp_mock_backend.mjs");
+    await fs.writeFile(script,
+      'const verdict = { status: "pass", summary: "mock", findings: [], elapsedMs: 1 };\n' +
+      'const result = "done " + "\\`\\`\\`json " + JSON.stringify(verdict) + " \\`\\`\\`";\n' +
+      'console.log(JSON.stringify({ type: "result", result, total_cost_usd: 0.05 }));\n',
+      { mode: 0o644 });
+    process.env.KIRI_CLAUDE_CMD_OVERRIDE = `node ${script}`;
+    const v = await consult({ phase: "0", repoRoot: "/tmp", timeoutSeconds: 5 });
+    expect(v.status).toBe("pass");
+    expect(v.summary).toBe("mock");
+    expect(v.costUsd).toBeCloseTo(0.05, 2);
+    expect(v.backend).toBe("claude");
+    await fs.unlink(script);
+    delete process.env.KIRI_CLAUDE_CMD_OVERRIDE;
+    delete process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT;
   });
 });
