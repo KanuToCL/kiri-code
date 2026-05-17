@@ -1,6 +1,6 @@
 # kiri-code — Status
 
-**Resume here:** Phase 0, Step 1 — `scripts/probe-backends.sh`. See `plan/PHASE-0-baseline.md`.
+**Resume here:** Phase 1, Step 1 — package.json + tsconfig.json + vitest config. See `plan/PHASE-1-mvp.md`.
 
 ## Project Status: 🟡 PRE-ALPHA — design phase complete, implementation pending
 
@@ -10,9 +10,9 @@
 
 ## Where We Are
 
-### Phase 0: Honest baseline ⬜ TODO
-- [ ] Step 1 — `scripts/probe-backends.sh` + KNOWN_ISSUES baseline
-- [ ] Step 2 — Capture test-suite baseline
+### Phase 0: Honest baseline ✅ done (`1dfa871`, `23c8306`)
+- [x] Step 1 — `scripts/probe-backends.sh` + KNOWN_ISSUES baseline
+- [x] Step 2 — Capture test-suite baseline
 
 ### Phase 1: MVP (consult library + kiri CLI + claude backend) ⬜ TODO
 - [ ] Step 1 — package.json + tsconfig.json + vitest config
@@ -107,6 +107,7 @@ kiri-code/
 
 | Date | Commit | Summary |
 |---|---|---|
+| 2026-05-16 | 23c8306 | Phase 0 ✅ — probe script, baseline captured, test suite status recorded |
 | 2026-05-15 | (initial) | Repo scaffold, six-phase plan, discipline file. |
 
 ---
