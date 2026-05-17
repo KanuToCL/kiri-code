@@ -3,6 +3,3 @@ dist/
 *.log
 .DS_Store
 .env
-
-# kiri machine-local state (don't commit)
-.local/state/kiri-*
