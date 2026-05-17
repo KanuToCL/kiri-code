@@ -40,7 +40,7 @@ openai-direct: unavailable
 
 ### Test suite baseline
 
-- `npm test` wired: no — pending Phase 1
+- `npm test` wired: no — pending Phase 1 Step 1 (package.json + vitest config)
 - Tests passed: 0
 - Tests failed: 0
 - Date captured: 2026-05-16
