@@ -23,6 +23,30 @@ Tracking what's broken, planned, or pending decision. Updated in the same commit
 
 ---
 
+## Baseline (Phase 0)
+
+### Backends detected (`./scripts/probe-backends.sh`)
+
+```
+claude: cli-only (missing ANTHROPIC_API_KEY)
+codex: unavailable
+gemini: unavailable
+anthropic-direct: unavailable
+openai-direct: unavailable
+```
+
+- `claude` CLI is installed but `ANTHROPIC_API_KEY` is not set. Phase 1 will ship; `consult()` will return `{status: "skipped"}` until the key is provided.
+- No other backends (codex, gemini, direct APIs) are available.
+
+### Test suite baseline
+
+- `npm test` wired: no — pending Phase 1
+- Tests passed: 0
+- Tests failed: 0
+- Date captured: 2026-05-16
+
+---
+
 ## Resolved
 
 (none yet — populate as phases land)
