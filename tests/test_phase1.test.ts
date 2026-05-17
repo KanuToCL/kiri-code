@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFile } from "fs/promises";
+import { execSync } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import { ClaudeBackend } from "../src/backends/claude.js";
@@ -105,7 +106,7 @@ describe("consult()", () => {
     const fs = await import("fs/promises");
     process.env.ANTHROPIC_API_KEY = "test-key";
     process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT = "1";
-    // Mock backend: single-line stream-json with verdict in backtick block (no newlines in result to avoid split issues)
+    // Mock backend: single-line stream-json with verdict in backtick block
     const script = path.resolve(__dirname, "../.tmp_mock_backend.mjs");
     await fs.writeFile(script,
       'const verdict = { status: "pass", summary: "mock", findings: [], elapsedMs: 1 };\n' +
@@ -121,5 +122,25 @@ describe("consult()", () => {
     await fs.unlink(script);
     delete process.env.KIRI_CLAUDE_CMD_OVERRIDE;
     delete process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT;
+  });
+});
+
+describe("kiri CLI", () => {
+  it("test_t1_6_kiri_consult_help", () => {
+    const out = execSync("node dist/src/cli.js consult --help", { encoding: "utf8" });
+    expect(out).toMatch(/phase/i);
+    expect(out).toMatch(/backend/i);
+    expect(out).toMatch(/model/i);
+  });
+
+  it("test_t1_6_kiri_consult_skips_when_no_backend", () => {
+    const had_key = process.env.ANTHROPIC_API_KEY;
+    const env = { ...process.env };
+    delete env.ANTHROPIC_API_KEY;
+    delete env.KIRI_FORCE_CLAUDE_CLI_PRESENT;
+    const out = execSync("node dist/src/cli.js consult 0 --repo-root /tmp", { encoding: "utf8", env });
+    const verdict = JSON.parse(out);
+    expect(verdict.status).toBe("skipped");
+    if (had_key !== undefined) process.env.ANTHROPIC_API_KEY = had_key;
   });
 });
