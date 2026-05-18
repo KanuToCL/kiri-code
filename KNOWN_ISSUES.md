@@ -9,7 +9,7 @@ Tracking what's broken, planned, or pending decision. Updated in the same commit
 ### Architectural
 
 - **Backend CLI schema confidence**: codex/gemini CLI output schemas are placeholders in Phase 4 — `parseVerdict` and `invoke` args need real-CLI confirmation before shipping. Tests use mocked stdout that may not match real responses.
-- **Pi extension API names**: Phase 2/3 extensions reference `pi.on(...)`, `pi.injectMessage(...)`, `defineTool`, etc. as illustrative. The first task in each relevant phase is to confirm against the installed `node_modules/@mariozechner/pi-coding-agent/dist/index.d.ts`. If names differ, fix code AND plan inline.
+- **[2026-05-17] Pi extension API names**: Verified all `pi.*` calls in `extensions/*.ts` against installed `ExtensionAPI@0.73.1`. All 6 calls (`pi.on`, `pi.sendUserMessage`, `pi.registerTool`) exist with matching signatures. Zero TS errors on build.
 - **License attribution**: prompts/discipline files draw from verifiable-plan skill (our own) and concepts borrowed from Superpowers / 10x-engineer / ring-of-elders. Need to add proper attribution in README before any open-source release.
 
 ### Tooling

@@ -1,6 +1,6 @@
 # kiri-code — Status
 
-**Resume here:** Phase FIX-2, Task FIX2-2 — Verify `pi.*` calls against installed ExtensionAPI. See `plan/PHASE-FIX2.md`.
+**Resume here:** Phase FIX-2, Task FIX2-3 — `reflect-before-act.ts`: implement or delete. See `plan/PHASE-FIX2.md`.
 
 ## Project Status: 🟢 v0.1.0-rc1 — phases 0–7 stabilized, 69/69 tests green, Phase FIX complete
 
