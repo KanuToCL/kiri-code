@@ -48,13 +48,13 @@ describe("ClaudeBackend", () => {
     delete process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT;
   });
 
-  it("test_t1_4_claude_backend_unavailable_without_key", async () => {
+  it("test_t1_4_claude_backend_available_via_cli_without_key", async () => {
     const b = new ClaudeBackend();
     const had_key = process.env.ANTHROPIC_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
     process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT = "1";
     const ok = await b.available();
-    expect(ok).toBe(false);
+    expect(ok).toBe(true);
     if (had_key !== undefined) process.env.ANTHROPIC_API_KEY = had_key;
     delete process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT;
   });
@@ -96,9 +96,11 @@ describe("consult()", () => {
     const had_key = process.env.ANTHROPIC_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT;
+    process.env.KIRI_FORCE_CLAUDE_CLI_ABSENT = "1";   // bypass real PATH check
     process.env.KIRI_BUDGET_INJECT = "{}";
     const v = await consult({ phase: "0", repoRoot: "/tmp", timeoutSeconds: 5 });
     delete process.env.KIRI_BUDGET_INJECT;
+    delete process.env.KIRI_FORCE_CLAUDE_CLI_ABSENT;
     expect(v.status).toBe("skipped");
     expect(v.summary).toMatch(/no backend/i);
     if (had_key !== undefined) process.env.ANTHROPIC_API_KEY = had_key;

@@ -5,13 +5,19 @@ export class ClaudeBackend implements ConsultBackend {
   readonly name = "claude";
 
   async available(): Promise<boolean> {
-    if (!process.env.ANTHROPIC_API_KEY) return false;
+    // Two modes: key-mode (explicit API token; bills the user directly) and
+    // CLI-mode (`claude` CLI logged in via OAuth/subscription). Either is
+    // sufficient. invoke() passes the env through, so whichever credential
+    // the CLI finds at runtime wins.
+    const hasKey = !!process.env.ANTHROPIC_API_KEY;
+    if (process.env.KIRI_FORCE_CLAUDE_CLI_ABSENT === "1") return hasKey;
     if (process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT === "1") return true;
-    return new Promise((resolve) => {
+    const cliPresent = await new Promise<boolean>((resolve) => {
       const p = spawn("claude", ["--version"], { stdio: "ignore" });
       p.on("close", (code) => resolve(code === 0));
       p.on("error", () => resolve(false));
     });
+    return hasKey || cliPresent;
   }
 
   async invoke(prompt: string, cwd: string, timeoutMs: number, model?: string): Promise<SpawnResult> {

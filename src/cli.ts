@@ -32,6 +32,12 @@ program
       model: opts.model,
       dryRun: opts.dryRun,
     });
+    if (verdict.status === "skipped") {
+      process.stderr.write(
+        "kiri: ⚠ audit SKIPPED — " + verdict.summary + "\n" +
+        "  Continuing without consult. To enable: run `claude login` (CLI mode) OR set ANTHROPIC_API_KEY (key mode).\n"
+      );
+    }
     process.stdout.write(JSON.stringify(verdict, null, 2) + "\n");
     process.exit(verdict.status === "error" ? 2 : 0);
   });
