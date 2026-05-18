@@ -21,7 +21,9 @@ export class ClaudeBackend implements ConsultBackend {
   }
 
   async invoke(prompt: string, cwd: string, timeoutMs: number, model?: string): Promise<SpawnResult> {
-    const args = ["-p", prompt, "--output-format", "stream-json"];
+    // `--verbose` is mandatory when combining `-p` with `--output-format stream-json`
+    // per `claude --help` (otherwise: "Error: ... requires --verbose").
+    const args = ["-p", prompt, "--output-format", "stream-json", "--verbose"];
     if (model) args.push("--model", model);
     const cmdOverride = process.env.KIRI_CLAUDE_CMD_OVERRIDE;   // test-only
     const [cmd, ...prefix] = (cmdOverride ?? "claude").split(" ");
