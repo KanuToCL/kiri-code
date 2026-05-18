@@ -107,6 +107,9 @@ kiri-code/
 
 | Date | Commit | Summary |
 |---|---|---|
+| 2026-05-17 | 9b75f58 | Phase FIX ✅ — sinks CJS cleanup, full suite 69/69 green |
+| 2026-05-17 | 31eab2d | Phase FIX ✅ — backends CJS cleanup, ESM/CJS emit drift resolved |
+| 2026-05-17 | 83e0e43 | Phase FIX ✅ — cli.ts init wiring, templates copy to dist |
 | 2026-05-17 | bb1a086 | Phase 1 ✅ — MVP: types, ClaudeBackend, consult(), kiri CLI, 14 tests |
 | 2026-05-16 | 23c8306 | Phase 0 ✅ — probe script, baseline captured, test suite status recorded |
 | 2026-05-15 | (initial) | Repo scaffold, six-phase plan, discipline file. |

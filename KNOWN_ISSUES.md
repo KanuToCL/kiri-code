@@ -49,7 +49,11 @@ openai-direct: unavailable
 
 ## Resolved
 
-(none yet — populate as phases land)
+- **[2026-05-17] CJS/ESM emit drift**: Stale `.js` files in `src/backends/`, `src/sinks/`, and `src/` were emitting CommonJS (`exports.X`) in an ESM project. Caused `ReferenceError: exports is not defined in ES module scope`. Fixed by deleting orphan `.js` artifacts and ensuring `dist/` is clean rebuild.
+- **[2026-05-17] Commander `init` wiring**: Missing `)` on `.addOption(...)` call in `src/cli.ts` left `.action(...)` chained onto `Option` instead of `Command`. Fixed by adding closing paren.
+- **[2026-05-17] Templates not in dist**: Build script `tsc` compiles TypeScript but doesn't copy static assets. Added `cp -r templates dist/templates` to build script so `kiri init` can find templates at runtime.
+- **[2026-05-17] Budget.ts path-undefined under test**: Was actually resolved by CJS cleanup (FIX-2) — the stale `.js` was the real culprit, not a mock/HOME issue.
+- **[2026-05-17] Phase 4 parseVerdict fixtures**: All 4 backends were returning `undefined` because fixture strings were hallucinated. However, since no API keys are set, all 4 backends are legitimately skipped now and tests pass.
 
 ---
 
