@@ -18,7 +18,7 @@ describe("consult pi extension", () => {
     expect(registeredName).toBe("consult");
   });
 
-  it("test_t2_2_tool_parameters_include_phase_backend_model", async () => {
+  it("test_t2_2_tool_parameters_include_phase_backend_auditorModel", async () => {
     const ext = await import("../extensions/consult.js");
     let registeredTool: any;
     const fakePi = { registerTool: (t: any) => { registeredTool = t; } };
@@ -26,7 +26,7 @@ describe("consult pi extension", () => {
     const props = registeredTool.parameters.properties;
     expect(props).toHaveProperty("phase");
     expect(props).toHaveProperty("backend");
-    expect(props).toHaveProperty("model");
+    expect(props).toHaveProperty("auditorModel");
   });
 });
 

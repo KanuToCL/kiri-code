@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "description": "Discipline for local-model coding — out-of-band review at phase boundaries",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "bin": {
-    "kiri": "dist/cli.js"
+    "kiri": "dist/src/cli.js"
   },
   "scripts": {
     "build": "tsc && cp -r templates dist/templates",

@@ -144,6 +144,7 @@ describe("kiri CLI", () => {
     const env = { ...process.env };
     delete env.ANTHROPIC_API_KEY;
     delete env.KIRI_FORCE_CLAUDE_CLI_PRESENT;
+    env.KIRI_FORCE_CLAUDE_CLI_ABSENT = "1";   // bypass real PATH check
     env.KIRI_BUDGET_INJECT = "{}";
     const out = execSync("node dist/src/cli.js consult 0 --repo-root /tmp", { encoding: "utf8", env });
     const verdict = JSON.parse(out);

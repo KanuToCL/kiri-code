@@ -21,15 +21,15 @@ program
   .command("consult <phase>")
   .description("Run an out-of-band auditor on the named phase")
   .addOption(new Option("--repo-root <path>", "Project root (default: cwd)").default(process.cwd()))
-  .addOption(new Option("--backend <name>", "Force a specific backend (claude, codex, gemini)"))
-  .addOption(new Option("--model <id>", "Override the backend's default model"))
+  .addOption(new Option("--backend <name>", "Force a specific auditor backend (claude, codex, gemini)"))
+  .addOption(new Option("--auditor-model <id>", "Override the cloud auditor's model id (NOT the local executor)"))
   .addOption(dryRunOpt)
   .action(async (phase, opts) => {
     const verdict = await consult({
       phase,
       repoRoot: opts.repoRoot,
       backend: opts.backend,
-      model: opts.model,
+      auditorModel: opts.auditorModel,
       dryRun: opts.dryRun,
     });
     if (verdict.status === "skipped") {

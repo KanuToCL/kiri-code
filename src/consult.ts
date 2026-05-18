@@ -85,7 +85,7 @@ export async function consult(args: ConsultArgs): Promise<ConsultVerdict> {
 
   let raw;
   try {
-    raw = await backend.invoke(prompt, args.repoRoot, timeoutMs, args.model);
+    raw = await backend.invoke(prompt, args.repoRoot, timeoutMs, args.auditorModel);
   } catch (err: any) {
     return { status: "error", summary: `backend failed: ${err.message}`, findings: [], backend: backend.name, elapsedMs: Date.now() - start };
   }
@@ -116,7 +116,7 @@ export async function consult(args: ConsultArgs): Promise<ConsultVerdict> {
   verdict.elapsedMs = Date.now() - start;
   verdict.costUsd = backend.parseCost(raw.stdout);
   verdict.backend = backend.name;
-  if (args.model) verdict.model = args.model;
+  if (args.auditorModel) verdict.auditorModel = args.auditorModel;
 
   // Branch detection (Phase 2)
   if (beforeSha) {

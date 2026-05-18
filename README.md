@@ -23,6 +23,20 @@ npm run build
 npm link   # makes `kiri` available globally
 ```
 
+## Terminology — executor vs auditor
+
+kiri-code distinguishes two models in the workflow. Mixing them up is the single most common confusion:
+
+- **Executor** — the *local* junior model (e.g. `qwen3.6-27B` via vLLM) that *writes code* by following `PLAN.md`. kiri-code does **not** drive the executor; your local agent (pi, Claude Code with a local model, etc.) does.
+- **Auditor** — the *cloud* senior model invoked by `consult()` at phase boundaries to *review* what the executor produced. kiri-code only ever drives the auditor.
+
+`--auditor-model <id>` (and `verdict.auditorModel`) refer to the *cloud auditor*, never the local executor. The auditor's `claude` CLI backend works in either of two credential modes:
+
+- **Key mode** — `ANTHROPIC_API_KEY` set (bills the API directly).
+- **CLI mode** — `claude` CLI logged in via subscription/OAuth (no key needed).
+
+If neither mode finds a backend, `consult()` returns `{status: "skipped"}` and the CLI prints a loud stderr warning — your other work continues uninterrupted.
+
 ## Usage
 
 ### From a shell
@@ -31,8 +45,8 @@ npm link   # makes `kiri` available globally
 # At any phase boundary, in a project with PLAN.md and ONBOARDING.md:
 kiri consult <phase>
 
-# With explicit backend / model:
-kiri consult 4 --backend codex --model gpt-5
+# With explicit backend / auditor-model:
+kiri consult 4 --backend codex --auditor-model gpt-5
 
 # Bootstrap a new repo with guardrails:
 cd <new-repo> && kiri init
@@ -66,6 +80,16 @@ If no backend's key is set, `consult()` returns `{status: "skipped"}` cleanly. N
 
 See `ONBOARDING.md`.
 
+## Attribution
+
+Prompts and discipline concepts in this project draw from:
+
+- **verifiable-plan** (this repo) — plan structure, TDD-per-step, commit-per-task discipline.
+- **10x-engineer / Superpowers** (`~/.claude/plugins/local/10x-engineer/`) — system prompt patterns, testing-anti-patterns, verification-before-completion.
+- **ring-of-elders** — continuous-nudge philosophy, out-of-band review at phase boundaries.
+
+All borrowed concepts are structural/pattern-level; no verbatim prompt text is lifted.
+
 ## License
 
-TBD (depends on which sources we lift from — see `KNOWN_ISSUES.md`).
+MIT. See `LICENSE`.

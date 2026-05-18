@@ -8,24 +8,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function resolveCliPath(): string {
   if (process.env.KIRI_CLI_PATH) return process.env.KIRI_CLI_PATH;
-  return path.resolve(__dirname, "../dist/cli.js");
+  return path.resolve(__dirname, "../dist/src/cli.js");
 }
 
 interface ConsultParams {
   phase: string;
   backend?: string;
-  model?: string;
+  auditorModel?: string;
   dryRun?: boolean;
 }
 
 const consultTool: ToolDefinition<any, any> = {
   name: "consult",
   label: "Consult",
-  description: "Run an out-of-band Claude/Codex/Gemini auditor on the named phase. Returns a verdict and may patch the plan with delta tasks. Use ONLY at phase boundaries. If no backend is available, returns 'skipped' instead of erroring.",
+  description: "Run an out-of-band Claude/Codex/Gemini AUDITOR on the named phase. The auditor is a cloud senior model (NOT the local executor). Returns a verdict and may patch the plan with delta tasks. Use ONLY at phase boundaries. If no auditor backend is available, returns 'skipped' instead of erroring.",
   parameters: Type.Object({
     phase: Type.String({ description: "Phase identifier (e.g., '4' or '3.7')" }),
-    backend: Type.Optional(Type.String({ description: "Force a backend: claude | codex | gemini" })),
-    model: Type.Optional(Type.String({ description: "Override the chosen backend's default model" })),
+    backend: Type.Optional(Type.String({ description: "Force an auditor backend: claude | codex | gemini" })),
+    auditorModel: Type.Optional(Type.String({ description: "Override the cloud auditor's model id (NOT the local executor)" })),
     dryRun: Type.Optional(Type.Boolean({ description: "Audit without committing" })),
   }),
   async execute(_id, params: ConsultParams, signal, _onUpdate, ctx) {
@@ -33,7 +33,7 @@ const consultTool: ToolDefinition<any, any> = {
     const cliPath = resolveCliPath();
     const args: string[] = [cliPath, "consult", params.phase, "--repo-root", ctx.cwd];
     if (params.backend) args.push("--backend", params.backend);
-    if (params.model) args.push("--model", params.model);
+    if (params.auditorModel) args.push("--auditor-model", params.auditorModel);
     if (params.dryRun) args.push("--dry-run");
 
     return new Promise((resolve, reject) => {
