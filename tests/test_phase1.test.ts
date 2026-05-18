@@ -96,7 +96,9 @@ describe("consult()", () => {
     const had_key = process.env.ANTHROPIC_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT;
+    process.env.KIRI_BUDGET_INJECT = "{}";
     const v = await consult({ phase: "0", repoRoot: "/tmp", timeoutSeconds: 5 });
+    delete process.env.KIRI_BUDGET_INJECT;
     expect(v.status).toBe("skipped");
     expect(v.summary).toMatch(/no backend/i);
     if (had_key !== undefined) process.env.ANTHROPIC_API_KEY = had_key;
@@ -106,6 +108,7 @@ describe("consult()", () => {
     const fs = await import("fs/promises");
     process.env.ANTHROPIC_API_KEY = "test-key";
     process.env.KIRI_FORCE_CLAUDE_CLI_PRESENT = "1";
+    process.env.KIRI_BUDGET_INJECT = "{}";
     // Mock backend: single-line stream-json with verdict in backtick block
     const script = path.resolve(__dirname, "../.tmp_mock_backend.mjs");
     await fs.writeFile(script,
@@ -115,6 +118,7 @@ describe("consult()", () => {
       { mode: 0o644 });
     process.env.KIRI_CLAUDE_CMD_OVERRIDE = `node ${script}`;
     const v = await consult({ phase: "0", repoRoot: "/tmp", timeoutSeconds: 5 });
+    delete process.env.KIRI_BUDGET_INJECT;
     expect(v.status).toBe("pass");
     expect(v.summary).toBe("mock");
     expect(v.costUsd).toBeCloseTo(0.05, 2);
@@ -138,6 +142,7 @@ describe("kiri CLI", () => {
     const env = { ...process.env };
     delete env.ANTHROPIC_API_KEY;
     delete env.KIRI_FORCE_CLAUDE_CLI_PRESENT;
+    env.KIRI_BUDGET_INJECT = "{}";
     const out = execSync("node dist/src/cli.js consult 0 --repo-root /tmp", { encoding: "utf8", env });
     const verdict = JSON.parse(out);
     expect(verdict.status).toBe("skipped");

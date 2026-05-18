@@ -1,6 +1,6 @@
 # kiri-code — Status
 
-**Resume here:** Phase FIX, Task FIX-2 — Eliminate ESM/CJS exports leak. See `plan/PHASE-FIX.md`.
+**Resume here:** Phase FIX, Task FIX-3 — Repair `budget.ts` path-undefined under test. See `plan/PHASE-FIX.md`.
 
 ## Project Status: 🟠 RED — phases 2–7 scaffolded uncommitted, 11/69 tests failing (recovery in progress)
 

@@ -1,0 +1,22 @@
+repos:
+  DEFAULT:
+    hooks:
+      pre-commit:
+        - id: pytest-check
+          name: Run pytest
+          entry: pytest
+          args:
+            - "-q"
+            - "--no-header"
+        - id: pyflakes-check
+          name: Run pyflakes
+          entry: pyflakes
+          args:
+            - "--version"
+      commit-msg:
+        - id: conventional-commits
+          name: Conventional commit messages
+          entry: conventional-commits
+          args:
+            - "--pattern"
+            - "^(feat|fix|chore|docs|style|refactor|perf|test)(\\([\\w\\-]+\\))?: .+"

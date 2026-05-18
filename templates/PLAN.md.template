@@ -1,0 +1,23 @@
+# <PROJECT> — Implementation Plan
+
+## Ground rules
+
+1. Do not claim "done" until you have proof. Each task ends with a `# verify` block AND a paired pytest/vitest test.
+2. Run code before writing more code. After every file change, re-run the relevant verify.
+3. Never invent an API. Verify with `inspect.getsourcefile` / read the installed source.
+4. Read the file before editing it.
+5. Update `ONBOARDING.md` "Resume here:" in the same commit as the code change.
+6. 3-fail rule. If a verify fails three times in a row, stop and ask.
+7. Time budget per task: 30 minutes. If you can't finish in budget, stop and report what's blocking.
+8. No speculative scope. Only what's needed to clear the current verify.
+9. Commit per task. One logical change per commit.
+10. Never skip hooks (`--no-verify`, etc.) without explicit user permission.
+
+## Phases
+
+| File | Phase | What |
+|---|---|---|
+| `plan/PHASE-0-baseline.md` | 0 | Honest baseline |
+| `plan/PHASE-1-...` | 1 | ... |
+
+Use the `verifiable-plan` skill to write each phase file.

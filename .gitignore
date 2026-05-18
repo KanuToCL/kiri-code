@@ -3,3 +3,8 @@ dist/
 *.log
 .DS_Store
 .env
+
+# kiri machine-local state
+.local/state/kiri-*
+~/.local/state/kiri-consult.log
+~/.local/state/kiri-budget.json

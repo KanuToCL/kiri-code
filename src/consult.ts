@@ -1,16 +1,43 @@
 import { readFile } from "fs/promises";
+import { execSync } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { ConsultArgs, ConsultVerdict, ConsultBackend } from "./types.js";
 import { ClaudeBackend } from "./backends/claude.js";
+import { CodexBackend } from "./backends/codex.js";
+import { GeminiBackend } from "./backends/gemini.js";
+import { AnthropicDirectBackend } from "./backends/anthropic-direct.js";
+import { OpenAIDirectBackend } from "./backends/openai-direct.js";
+import { detectAuditorBranch } from "./branch-detect.js";
+import { notify } from "./notify.js";
+import { checkBudget } from "./budget.js";
+import { PROMPT_VERSION } from "./prompt-version.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const BACKENDS: ConsultBackend[] = [new ClaudeBackend()];   // Phase 4 will add more
+const ALL_BACKENDS: Record<string, () => ConsultBackend> = {
+  "claude":             () => new ClaudeBackend(),
+  "codex":              () => new CodexBackend(),
+  "gemini":             () => new GeminiBackend(),
+  "anthropic-direct":   () => new AnthropicDirectBackend(),
+  "openai-direct":      () => new OpenAIDirectBackend(),
+};
+
+const DEFAULT_PRIORITY = ["claude", "codex", "gemini", "anthropic-direct", "openai-direct"];
 
 async function pickBackend(override?: string): Promise<ConsultBackend | null> {
-  const list = override ? BACKENDS.filter(b => b.name === override) : BACKENDS;
-  for (const b of list) {
+  if (override) {
+    const factory = ALL_BACKENDS[override];
+    if (!factory) return null;
+    const b = factory();
+    return (await b.available()) ? b : null;
+  }
+  const priority = (process.env.KIRI_BACKEND_PRIORITY ?? "").split(",").map(s => s.trim()).filter(Boolean);
+  const order = priority.length > 0 ? priority : DEFAULT_PRIORITY;
+  for (const name of order) {
+    const factory = ALL_BACKENDS[name];
+    if (!factory) continue;
+    const b = factory();
     if (await b.available()) return b;
   }
   return null;
@@ -27,6 +54,17 @@ async function renderPrompt(args: ConsultArgs): Promise<string> {
 
 export async function consult(args: ConsultArgs): Promise<ConsultVerdict> {
   const start = Date.now();
+
+  // Rate limit check (Phase 6)
+  if (!(await checkBudget(args.repoRoot))) {
+    return {
+      status: "blocked",
+      summary: "rate limit exceeded (5 calls/hour/repo)",
+      findings: [],
+      elapsedMs: 0,
+    };
+  }
+
   const backend = await pickBackend(args.backend);
   if (!backend) {
     return {
@@ -36,6 +74,11 @@ export async function consult(args: ConsultArgs): Promise<ConsultVerdict> {
       elapsedMs: Date.now() - start,
     };
   }
+
+  // Capture pre-audit SHA for branch detection (only if git repo)
+  let beforeSha: string | undefined;
+  try { beforeSha = execSync("git rev-parse HEAD", { cwd: args.repoRoot, encoding: "utf8" }).trim(); }
+  catch { beforeSha = undefined; }
 
   const prompt = await renderPrompt(args);
   const timeoutMs = (args.timeoutSeconds ?? 600) * 1000;
@@ -74,5 +117,21 @@ export async function consult(args: ConsultArgs): Promise<ConsultVerdict> {
   verdict.costUsd = backend.parseCost(raw.stdout);
   verdict.backend = backend.name;
   if (args.model) verdict.model = args.model;
+
+  // Branch detection (Phase 2)
+  if (beforeSha) {
+    const branchInfo = detectAuditorBranch(args.repoRoot, beforeSha);
+    if (branchInfo) {
+      verdict.branch = branchInfo.branch;
+      verdict.commits = branchInfo.commits;
+    }
+  }
+
+  // Prompt version (Phase 6)
+  verdict.promptVersion = PROMPT_VERSION;
+
+  // Notifications (Phase 5) — fire-and-forget
+  notify(verdict, args).catch(() => {/* never propagate notify failures */});
+
   return verdict;
 }

@@ -1,0 +1,17 @@
+# Working in this repo
+
+You are an agent inheriting an in-flight project. `PLAN.md` is the source of truth for what to do; this file is the source of truth for HOW.
+
+## The seven rules of not lying about your work
+
+1. Never invent an API. Verify with `inspect.getsourcefile` / read the installed source.
+2. Run code before writing more code. After every file change, run the verify.
+3. `pytest` exit 0 is not "done." Pair every task with a numerical/behavioral test.
+4. Update `ONBOARDING.md` "Resume here:" in the same commit as the code change.
+5. 3-fail rule: stop and ask if a verify fails three times in a row.
+6. No speculative scope. Only what's needed to clear the current verify.
+7. Never skip hooks (`--no-verify`) without explicit user permission.
+
+## Before marking any phase ✅
+
+`git status --porcelain` must be empty. Uncommitted source = phase not done.
