@@ -25,13 +25,35 @@ program
   .addOption(new Option("--auditor-model <id>", "Override the cloud auditor's model id (NOT the local executor)"))
   .addOption(dryRunOpt)
   .action(async (phase, opts) => {
-    const verdict = await consult({
-      phase,
-      repoRoot: opts.repoRoot,
-      backend: opts.backend,
-      auditorModel: opts.auditorModel,
-      dryRun: opts.dryRun,
-    });
+    const t0 = Date.now();
+    const quiet = process.env.KIRI_QUIET === "1";
+    if (!quiet) {
+      const tag = opts.backend ? opts.backend : "auto";
+      const mdl = opts.auditorModel ? ` model=${opts.auditorModel}` : "";
+      process.stderr.write(`kiri: consulting auditor [phase=${phase} backend=${tag}${mdl}] ...\n`);
+    }
+    const tick = quiet ? null : setInterval(() => {
+      const s = Math.round((Date.now() - t0) / 1000);
+      process.stderr.write(`  ... still working (${s}s elapsed)\n`);
+    }, 5000);
+    let verdict;
+    try {
+      verdict = await consult({
+        phase,
+        repoRoot: opts.repoRoot,
+        backend: opts.backend,
+        auditorModel: opts.auditorModel,
+        dryRun: opts.dryRun,
+      });
+    } finally {
+      if (tick) clearInterval(tick);
+    }
+    const ms = Date.now() - t0;
+    if (!quiet) {
+      const cost = verdict.costUsd !== undefined ? ` $${verdict.costUsd.toFixed(4)}` : "";
+      const back = verdict.backend ? ` backend=${verdict.backend}` : "";
+      process.stderr.write(`kiri: ${verdict.status} in ${Math.round(ms/100)/10}s${back}${cost}\n`);
+    }
     if (verdict.status === "skipped") {
       process.stderr.write(
         "kiri: ⚠ audit SKIPPED — " + verdict.summary + "\n" +
