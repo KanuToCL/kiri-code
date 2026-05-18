@@ -4,13 +4,26 @@
   "description": "Discipline for local-model coding — out-of-band review at phase boundaries",
   "type": "module",
   "main": "dist/index.js",
-  "bin": { "kiri": "dist/cli.js" },
+  "bin": {
+    "kiri": "dist/cli.js"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r templates dist/templates",
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "engines": { "node": ">=20" },
-  "dependencies": { "commander": "^12.0.0" },
-  "devDependencies": { "typescript": "^5.4.0", "vitest": "^1.6.0", "@types/node": "^20.12.0" }
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@mariozechner/pi-ai": "^0.73.1",
+    "@mariozechner/pi-coding-agent": "^0.73.1",
+    "@types/node": "^20.12.0",
+    "typebox": "^1.1.38",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
 }

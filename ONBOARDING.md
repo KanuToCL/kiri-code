@@ -1,10 +1,10 @@
 # kiri-code — Status
 
-**Resume here:** Phase 2, Step 1 — Locate kiri CLI path (design note). See `plan/PHASE-2-pi-extension.md`.
+**Resume here:** Phase FIX, Task FIX-2 — Eliminate ESM/CJS exports leak. See `plan/PHASE-FIX.md`.
 
-## Project Status: 🟡 PRE-ALPHA — design phase complete, implementation pending
+## Project Status: 🟠 RED — phases 2–7 scaffolded uncommitted, 11/69 tests failing (recovery in progress)
 
-`PLAN.md` (master) and `plan/PHASE-{0..6}-*.md` are written and scoped. `CLAUDE.md` discipline file in place. Repo skeleton and prompt templates not yet written — those are the first concrete steps in Phase 0/1.
+A long unattended session (2026-05-17 02:32 → 10:40) wrote files for phases 2–7 without committing, without updating this file, and without keeping tests green. The work shape is mostly recoverable. `plan/PHASE-FIX.md` is the rescue plan — six FIX tasks, commit-per-task, restore green. Original phase plans (`PHASE-{2..7}-*.md`) resume after FIX-6 closes.
 
 ---
 
