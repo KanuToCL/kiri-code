@@ -66,12 +66,25 @@ describe("tool-call-lint hazards", () => {
 });
 
 describe("reflect-before-act", () => {
-  it("test_t3_4_injects_on_every_5th_turn", async () => {
+  it("test_t3_4_registers_on_turn_start", async () => {
     const ext = await import("../extensions/reflect-before-act.js");
-    let handler: any;
-    const fakePi = { on: (_e: string, fn: any) => { handler = fn; } };
+    let registeredEvent = "";
+    const fakePi = { on: (e: string, _fn: any) => { registeredEvent = e; } };
     ext.default(fakePi as any);
-    // Verify the handler is registered for turn_start
-    expect(handler).toBeDefined();
+    expect(registeredEvent).toBe("turn_start");
+  });
+
+  it("test_t3_4_reflect_fires_every_fifth_turn", async () => {
+    const ext = await import("../extensions/reflect-before-act.js");
+    const sent: string[] = [];
+    let __cb: any;
+    const fakePi: any = {
+      on: (_e: string, cb: any) => { __cb = cb; },
+      sendUserMessage: (m: string) => { sent.push(m); },
+    };
+    ext.default(fakePi);
+    for (let i = 0; i < 11; i++) await __cb({ turnIndex: i });
+    expect(sent).toHaveLength(3); // turns 0, 5, 10
+    expect(sent[0]).toMatch(/Reflection/);
   });
 });
