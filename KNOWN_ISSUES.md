@@ -21,6 +21,13 @@ Tracking what's broken, planned, or pending decision. Updated in the same commit
 
 - Integration tests against real Claude (`describe.skipIf(!RUN_INTEGRATION)`) cost API tokens. Make sure CI doesn't accidentally run them.
 
+### Tests (skipIf backends)
+
+- Backend "codex" `parseVerdict` is `skipIf` until `OPENAI_API_KEY` is provided and `tests/fixtures/codex-real-output.txt` is captured.
+- Backend "gemini" `parseVerdict` is `skipIf` until `GEMINI_API_KEY` is provided and `tests/fixtures/gemini-real-output.txt` is captured.
+- Backend "anthropic-direct" `parseVerdict` is `skipIf` until `ANTHROPIC_API_KEY` is provided and `tests/fixtures/anthropic-real-output.txt` is captured.
+- Backend "openai-direct" `parseVerdict` is `skipIf` until `OPENAI_API_KEY` is provided and `tests/fixtures/openai-real-output.txt` is captured.
+
 ---
 
 ## Baseline (Phase 0)

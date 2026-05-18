@@ -18,10 +18,12 @@ describe("CodexBackend", () => {
     delete process.env.KIRI_FORCE_CODEX_CLI_PRESENT;
   });
 
-  it("test_t4_1_codex_parse_verdict_from_documented_schema", () => {
-    const b = new CodexBackend();
-    const stdout = 'thinking...\n\n```json\n{"status":"pass","summary":"clean","findings":[],"elapsedMs":1}\n```\n';
-    const v = b.parseVerdict(stdout);
+  it.skipIf(!process.env.OPENAI_API_KEY)("test_t4_1_codex_parse_verdict_from_real_output", () => {
+    // see tests/fixtures/codex-real-output.txt — capture committed only when OPENAI_API_KEY is set
+    const { readFileSync } = require("fs");
+    const path = require("path");
+    const stdout = readFileSync(path.join(__dirname, "fixtures", "codex-real-output.txt"), "utf8");
+    const v = new CodexBackend().parseVerdict(stdout);
     expect(v?.status).toBe("pass");
   });
 
@@ -44,10 +46,12 @@ describe("GeminiBackend", () => {
     delete process.env.KIRI_FORCE_GEMINI_CLI_PRESENT;
   });
 
-  it("test_t4_2_gemini_parse_verdict_from_plain_output", () => {
-    const b = new GeminiBackend();
-    const stdout = 'thinking...\n\n```json\n{"status":"pass","summary":"clean","findings":[],"elapsedMs":1}\n```\n';
-    const v = b.parseVerdict(stdout);
+  it.skipIf(!process.env.GEMINI_API_KEY)("test_t4_2_gemini_parse_verdict_from_real_output", () => {
+    // see tests/fixtures/gemini-real-output.txt — capture committed only when GEMINI_API_KEY is set
+    const { readFileSync } = require("fs");
+    const path = require("path");
+    const stdout = readFileSync(path.join(__dirname, "fixtures", "gemini-real-output.txt"), "utf8");
+    const v = new GeminiBackend().parseVerdict(stdout);
     expect(v?.status).toBe("pass");
   });
 
@@ -71,13 +75,12 @@ describe("AnthropicDirectBackend", () => {
     else delete process.env.ANTHROPIC_API_KEY;
   });
 
-  it("test_t4_3_parse_verdict_from_messages_response_shape", () => {
-    const b = new AnthropicDirectBackend();
-    const stdout = JSON.stringify({
-      content: [{ type: "text", text: 'reasoning...\n\n```json\n{"status":"pass","summary":"clean","findings":[],"elapsedMs":1}\n```' }],
-      usage: { input_tokens: 100, output_tokens: 50 },
-    });
-    const v = b.parseVerdict(stdout);
+  it.skipIf(!process.env.ANTHROPIC_API_KEY)("test_t4_3_parse_verdict_from_real_messages_response", () => {
+    // see tests/fixtures/anthropic-real-output.txt — capture committed only when ANTHROPIC_API_KEY is set
+    const { readFileSync } = require("fs");
+    const path = require("path");
+    const stdout = readFileSync(path.join(__dirname, "fixtures", "anthropic-real-output.txt"), "utf8");
+    const v = new AnthropicDirectBackend().parseVerdict(stdout);
     expect(v?.status).toBe("pass");
   });
 
@@ -107,13 +110,12 @@ describe("OpenAIDirectBackend", () => {
     else delete process.env.OPENAI_API_KEY;
   });
 
-  it("test_t4_4_parse_verdict_from_choices_response_shape", () => {
-    const b = new OpenAIDirectBackend();
-    const stdout = JSON.stringify({
-      choices: [{ message: { content: 'thinking...\n\n```json\n{"status":"pass","summary":"clean","findings":[],"elapsedMs":1}\n```' } }],
-      usage: { prompt_tokens: 100, completion_tokens: 50 },
-    });
-    const v = b.parseVerdict(stdout);
+  it.skipIf(!process.env.OPENAI_API_KEY)("test_t4_4_parse_verdict_from_real_choices_response", () => {
+    // see tests/fixtures/openai-real-output.txt — capture committed only when OPENAI_API_KEY is set
+    const { readFileSync } = require("fs");
+    const path = require("path");
+    const stdout = readFileSync(path.join(__dirname, "fixtures", "openai-real-output.txt"), "utf8");
+    const v = new OpenAIDirectBackend().parseVerdict(stdout);
     expect(v?.status).toBe("pass");
   });
 

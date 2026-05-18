@@ -1,6 +1,6 @@
 # kiri-code — Status
 
-**Resume here:** Phase 8 candidates or next steps from Sergio. Phase FIX complete (c2edf5f).
+**Resume here:** Phase FIX-2, Task FIX2-2 — Verify `pi.*` calls against installed ExtensionAPI. See `plan/PHASE-FIX2.md`.
 
 ## Project Status: 🟢 v0.1.0-rc1 — phases 0–7 stabilized, 69/69 tests green, Phase FIX complete
 
