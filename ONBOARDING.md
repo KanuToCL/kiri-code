@@ -1,6 +1,6 @@
 # kiri-code — Status
 
-**Resume here:** Phase FIX-2, Task FIX2-4 — License attribution before any release marker. See `plan/PHASE-FIX2.md`.
+**Resume here:** FORK-PLAN.md read; FORK-PHASE-0-baseline.md next. Pivot from consult-tool to forked-agent. See `docs/plans/2026-05-17-kiri-fork-design.md`.
 
 ## Project Status: 🟢 v0.1.0-rc1 — phases 0–7 stabilized, 69/69 tests green, Phase FIX complete
 
