@@ -1,8 +1,8 @@
 # kiri-code — Status
 
-**Resume here:** Phase FIX, Task FIX-6 — Full-suite green sweep and resume-line reset. See `plan/PHASE-FIX.md`.
+**Resume here:** Phase 8 candidates or next steps from Sergio. Phase FIX complete (c2edf5f).
 
-## Project Status: 🟢 GREEN — phases 1-7 stabilized, 69/69 tests passing
+## Project Status: 🟢 v0.1.0-rc1 — phases 0–7 stabilized, 69/69 tests green, Phase FIX complete
 
 A long unattended session (2026-05-17 02:32 → 10:40) wrote files for phases 2–7 without committing, without updating this file, and without keeping tests green. The work shape is mostly recoverable. `plan/PHASE-FIX.md` is the rescue plan — six FIX tasks, commit-per-task, restore green. Original phase plans (`PHASE-{2..7}-*.md`) resume after FIX-6 closes.
 
