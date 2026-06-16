@@ -24,6 +24,16 @@ iteration 2: fresh session ← goal + resume + phase file + ⚠ findings(iter1)
 - **`tell()` is ingest-only** (audit D3): `blocked` → findings into `state.findings` (the next fresh session's seed) + ONBOARDING + notify. No auto-fix.
 - **Rails are non-negotiable for unattended runs** (audit P0-7/P0-9/P1-6): real $-cost ceiling, secret redaction, kill-switch, checkpoint/resume, single-instance lock.
 
+## Relation to Ralph (lineage + two deliberate departures)
+kiri's wiggum loop **is a Ralph-style loop** — the technique Geoffrey Huntley coined ("Ralph is a bash loop", ghuntley.com/ralph), which Anthropic ships as the `ralph-wiggum` plugin. **We credit the lineage; we do not rebrand it** ("wiggum loop" is internal shorthand only). Two deliberate departures, both because kiri targets a **small local executor under audit**:
+
+1. **Stop on an objective gate, not a self-declared promise.** Ralph terminates when the agent emits a `--completion-promise` string — *trust-the-model* (the plugin literally instructs the model not to fake the promise, and admits it can't distinguish SUCCESS from BLOCKED, so it leans on `--max-iterations`). A 27B *will* hallucinate "done" — the exact failure kiri exists to catch. kiri's stop condition is **`# verify` + vitest + `consult()` verdict**, never the executor's own word. *(The anti-slop thesis, applied to the loop.)*
+2. **External fresh-session driver, not an in-session Stop-hook.** Ralph loops inside one session → context bloats every turn; for a small-context local model that's a liability. kiri runs the loop as an external driver spawning a fresh `createAgentSession` per iteration, threading state via files + findings (Approach B; audit I2).
+
+**Borrowed from Ralph:** state-in-files discipline; `ralph-multi`'s DAG/wave executor (cycle-detection, parallel waves, failed→downstream-blocked) as the blueprint for multi-phase runs and the agent factory; `cancel-ralph`'s state-file cancel = the W4 kill-switch; seed-prompt best-practices (phased goals, "if stuck after N, document blockers").
+
+**README one-liner:** *"kiri's executor loop is Ralph-style — gated by a frontier auditor instead of the model's own word."*
+
 ## Prerequisites (must land before W1)
 - **FORK-PHASE-1** (SDK-wrap): `createAgentSession` + kiri system prompt available (the driver imports it).
 - **Work-order P0 safety modules** (the loop refuses to ship without them): `src/gate.ts` (P0-8), `src/cost-ledger.ts` (P0-7), `src/redact.ts` (P0-9), `src/atomic-file.ts` (P1-5).
