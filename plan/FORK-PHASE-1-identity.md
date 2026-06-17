@@ -12,15 +12,20 @@
 4. **No speculative scope.** Only what the task names.
 5. **Never invent an API.** If a symbol isn't in `docs/PI-SDK-SURFACE.md` (from F0), STOP — don't guess.
 
-## Pre-flight (run first; if output differs, STOP & ask)
+## Pre-flight — EXECUTABLE gate (step 0; run it first — if it exits non-zero, STOP, do not start any task)
 ```bash
+set -e
 cd "$(git rev-parse --show-toplevel)"
-test -f docs/PI-SDK-SURFACE.md && echo surface-ok        # expect: surface-ok  (F0 done)
-npm install >/dev/null 2>&1 && npm run build >/dev/null 2>&1 && echo build-ok   # expect: build-ok
-npm test 2>&1 | grep -E "Tests "                          # expect: Tests  73 passed | 4 skipped (77)
-git status --porcelain                                    # expect: empty
+test -f docs/PI-SDK-SURFACE.md || { echo "STOP: docs/PI-SDK-SURFACE.md missing — F0 isn't done, go do F0 first"; exit 1; }
+node --version | grep -qE 'v(2[0-9]|[3-9][0-9])\.' || { echo "STOP: need node >= 20"; exit 1; }
+npm install >/dev/null 2>&1 && npm run build >/dev/null 2>&1 || { echo "STOP: build failed"; exit 1; }
+test -z "$(git status --porcelain)" || { echo "STOP: working tree dirty"; exit 1; }
+# capture + persist this phase's BASE (starting green count); the DoD reads it back, never re-measures
+BASE=$(npm test 2>&1 | grep -oE '[0-9]+ passed' | head -1 | grep -oE '^[0-9]+')
+grep -q '^PHASE_1_BASE:' ONBOARDING.md || echo "PHASE_1_BASE: $BASE" >> ONBOARDING.md
+echo "preflight-ok BASE=$BASE"
 ```
-If `docs/PI-SDK-SURFACE.md` is missing, **F0 isn't done — go do F0 first.**
+Commit the `PHASE_1_BASE:` line as task 1.0 before T1.1. On a crash-resume the existing `PHASE_1_BASE:` line is reused (the `grep -q` guard) — never re-measured, so a partial run's committed tests can't pollute BASE.
 
 ## API hazards (read before any code)
 | Reality (from F0 / SDK) | The mistake to avoid |
@@ -168,16 +173,19 @@ Pick **A** unless the human says CLI-only. **License (DEC-3, human decides):** m
 ```bash
 node dist/src/cli.js --version | grep -qx "kiri-code 0.1.0" && echo ok-version
 npm install --omit=dev >/dev/null 2>&1 && node dist/src/cli.js --version >/dev/null && echo ok-prod-deps
-npm test 2>&1 | grep -E "Tests "        # expect: 73 prior + 5 fork1 = 78 passed | 4 skipped
+BASE=$(grep '^PHASE_1_BASE:' ONBOARDING.md | grep -oE '[0-9]+'); NOW=$(npm test 2>&1 | grep -oE '[0-9]+ passed' | head -1 | grep -oE '^[0-9]+'); test "$NOW" -eq "$((BASE + 5))" && echo ok-count   # expect: ok-count  (BASE + 5 fork1 tests, BASE read from ONBOARDING — never a hardcoded absolute)
 git status --porcelain                  # expect: empty
 git log --oneline | grep -c "fork1 task"  # expect: >= 5
 ```
 - [ ] all five `# expect`s match · [ ] pi in `dependencies` · [ ] booted session uses the kiri prompt (T1.3) · [ ] no `systemPrompt:` invented anywhere · [ ] index/license resolved.
 
-## Out-of-band recheck (before marking ✅)
+## Out-of-band recheck (before marking ✅) — gated/skippable on the model being configured (ingredient 5/10)
 ```bash
-mkdir -p /tmp/kiri-fork1-smoke && cd /tmp/kiri-fork1-smoke && git init -q
-KIRI_MODEL=<your local vLLM model> node "$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null || echo ..)"/dist/src/cli.js .
+ROOT="$(git rev-parse --show-toplevel)"
+SMOKE="$(mktemp -d)" && cd "$SMOKE" && git init -q
+# resolve the local model: env override, else STOP-skip — never invent a model id
+[ -n "$KIRI_MODEL" ] || { echo "SKIP OOB: KIRI_MODEL unset — set it or run 'kiri setup'; note in KNOWN_ISSUES.md"; exit 0; }
+KIRI_MODEL="$KIRI_MODEL" node "$ROOT"/dist/src/cli.js .
 # expect: a session boots; its system prompt contains "Never invent an API"; clean exit.
 ```
 
