@@ -19,10 +19,21 @@ iteration 2: fresh session ← goal + resume + phase file + ⚠ findings(iter1)
 ```
 
 ## Architecture (decisions already settled by the audit)
-- **External driver, not an in-session hook** (audit I2): the loop owns the cycle and spawns a **fresh** `createAgentSession` per iteration → no context bleed from a failed attempt (independence-during-judgment).
+- **External driver over a branched, compacted session** (audit I2 + the long-horizon substrate): the loop owns the cycle. Instead of throwing context away each iteration, it uses pi's **branched session tree** (`createBranchedSession`) + **`session.compact()`** — a 27B keeps a *replayable* history without blowing its window, and failed attempts persist as branches (resume from any leaf). Fork-clean when isolation matters; continue+compact when continuity helps. This reconciles I2's no-context-bleed goal via **compaction, not amnesia**.
 - **Gate = green local gate, then consult as confirmation** (audit D2): phase "done" = `# verify` + `npm test -- fork<N>` green → `consult()` audits → `gateFromVerdict()` maps the verdict.
 - **`tell()` is ingest-only** (audit D3): `blocked` → findings into `state.findings` (the next fresh session's seed) + ONBOARDING + notify. No auto-fix.
 - **Rails are non-negotiable for unattended runs** (audit P0-7/P0-9/P1-6): real $-cost ceiling, secret redaction, kill-switch, checkpoint/resume, single-instance lock.
+
+## Long-horizon engine (pi-native — wire, don't build)
+**Doctrine: the context window is a cache, not the system of record.** Everything load-bearing must be reconstructable from disk — plan, `ONBOARDING.md`, git, the casebook, the pi session store. The executor's context is disposable; we externalize aggressively (doubly so for a small-context 27B). pi already ships ~70% of the machinery — **we wire it, we don't rebuild it** (and this is more evidence for SDK-wrap, DEC-1):
+
+- **Compaction** — `session.compact()` + pi's `compaction/` module + `SessionManager.getLatestCompactionEntry`: summarize history to survive the window *within* a phase. THE long-horizon lever for a 27B.
+- **Persistence + resume** — `SessionManager` (`create`/`list`/`loadEntriesFromFile`, on-disk session dir) gives crash/restart resume for free → **W4 defers to this** instead of a hand-rolled checkpoint (it only stores the *loop cursor*: current phase + `state.findings`).
+- **Branched session tree** — `createBranchedSession` + `getTree`/`getBranch`/`getLeaf`: each iteration/attempt is a branch; failures preserved; resume from a leaf.
+- **Replayable transcript** — `exportToJsonl` / `exportToHtml`: the audit trail; feeds the provenance ledger + the casebook.
+- **Mid-run model swap** — `setModel`: difficulty escalation (stuck N× → bump to a bigger local / one frontier attempt → back).
+
+**Still to BUILD (the ~30% pi doesn't cover) — task group W7:** scheduled pause/resume on a budget wall; cost-aware *pause-vs-stop*; the provenance/casebook ledger derived from the jsonl transcript.
 
 ## Relation to Ralph (lineage + two deliberate departures)
 kiri's wiggum loop **is a Ralph-style loop** — the technique Geoffrey Huntley coined ("Ralph is a bash loop", ghuntley.com/ralph), which Anthropic ships as the `ralph-wiggum` plugin. **We credit the lineage; we do not rebrand it** ("wiggum loop" is internal shorthand only). Two deliberate departures, both because kiri targets a **small local executor under audit**:
@@ -86,6 +97,15 @@ kiri's wiggum loop **is a Ralph-style loop** — the technique Geoffrey Huntley 
 **# verify:** `RUN_INTEGRATION=1 npm test -- wiggum_e2e` (manual; costs tokens).
 
 ---
+
+### W7 — long-horizon: scheduled pause/resume + casebook ledger (the ~30% pi doesn't give)
+**Goal:** survive budget walls + multi-session runs; turn the jsonl transcript into receipts + a growing case corpus.
+**Steps:**
+1. **Scheduled resume** — on `rate-limited`/`cost-cap` (from `gate.ts`), instead of a hard stop: write the loop cursor + schedule a wake (`at`/cron) to re-run `kiri loop --resume`; notify via `tell()`/telegram ("paused on budget; resuming 03:00"). Loop status becomes `paused`, not `stopped`.
+2. **Cost-aware pause-vs-stop** — the `cost-ledger` decides *pause* (rolling window will refill) vs *stop* (hard cap hit).
+3. **Casebook ledger** — after each `blocked`, append the failure (extracted from `exportToJsonl`) to `casebook/` (the open-rubric regression corpus, per commit `7b62b60`) + the provenance ledger (the `Implemented-by` split).
+**# verify:** `npm test -- wiggum`.
+**Paired test:** `test_loop_schedules_resume_on_cost_cap` (cost-cap → writes cursor + a scheduled wake; status `paused`, `runIteration` not re-entered); `test_casebook_appends_on_blocked` (one `blocked` verdict → exactly one case appended, carrying the finding evidence).
 
 ## Phase gate
 `npm test -- wiggum` green (unit, integration skipped); `kiri loop --help` lists the flags; a fake-adapter dry-run completes a `done` cycle; rails tests (kill-switch/lock/resume) green; `loop.ts` is no longer an orphan (imported by `wiggum.ts`/`cli.ts`).
