@@ -173,7 +173,7 @@ Pick **A** unless the human says CLI-only. **License (DEC-3, human decides):** m
 ```bash
 node dist/src/cli.js --version | grep -qx "kiri-code 0.1.0" && echo ok-version
 npm install --omit=dev >/dev/null 2>&1 && node dist/src/cli.js --version >/dev/null && echo ok-prod-deps
-BASE=$(grep '^PHASE_1_BASE:' ONBOARDING.md | grep -oE '[0-9]+'); NOW=$(npm test 2>&1 | grep -oE '[0-9]+ passed' | head -1 | grep -oE '^[0-9]+'); test "$NOW" -eq "$((BASE + 5))" && echo ok-count   # expect: ok-count  (BASE + 5 fork1 tests, BASE read from ONBOARDING — never a hardcoded absolute)
+BASE=$(grep '^PHASE_1_BASE:' ONBOARDING.md | sed -E 's/.*:[[:space:]]*([0-9]+).*/\1/'); NOW=$(npm test 2>&1 | grep -oE '[0-9]+ passed' | head -1 | grep -oE '^[0-9]+'); test "$NOW" -eq "$((BASE + 5))" && echo ok-count   # expect: ok-count  (BASE + 5 fork1 tests, BASE read from ONBOARDING — never a hardcoded absolute)
 git status --porcelain                  # expect: empty
 git log --oneline | grep -c "fork1 task"  # expect: >= 5
 ```
