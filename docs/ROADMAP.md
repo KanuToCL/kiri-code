@@ -31,6 +31,33 @@
 
 ---
 
+## 1.5 Harness map — the coder core IS a harness (Agent = Model + Harness)
+
+> Per *"The new SDLC with vibe coding"* (26–30 May 2026): the model is **one input**; the **harness** — instructions, tools, sandboxes, orchestration, hooks, observability — dominates behaviour. *"Most agent failures, examined honestly, are configuration failures."* That is kiri's anti-slop thesis verbatim: correctness lives in the harness, not the model. So the coder core must deliberately cover **all six organs** — and we judge every phase by which organ it strengthens. Honest status:
+
+| # | Harness organ | kiri coder-core pieces | Owner | Status |
+|---|---|---|---|---|
+| 1 | **Instructions & rule files** | `CLAUDE.md` (7 rules), `pi-discipline.md`, `auditor.md`, vendored skills, system-prompt replace | F1·F2·F-N | 🟢 strong (kiri's core competency) |
+| 2 | **Tools** (+ when/how prose) | pi's 7 + `consult` (built); `tell` (F4); LSP/symbol-resolve · sub-agent · casebook (§5) | F3·F4·§5 | 🟡 consult built; **LSP — the real anti-slop weapon — unbuilt** |
+| 3 | **Sandbox / exec env** | bash "sandboxed for unattended" — **prose only, no module** | — | 🔴 **GAP** — unattended loop runs `bash` with no real confinement |
+| 4 | **Orchestration** | wiggum loop (runIteration→gate→repeat, fresh sessions), `verdictToGate` (built), executor/auditor routing + pluggable backends + `setModel`, consult hand-off | F6 | 🟡 loop designed; sub-agent dispatch future |
+| 5 | **Guardrails / hooks** | nudge registry (post-edit-test=after-edit, tool-call-lint=at-tool, re-ground, prove-before-done, loop-guard) · git hooks + commit-trailers (before-commit) · redact (block secret leak) | F-N·F5·H | 🟢 strong (designed; maps 1:1 to the paper's hook examples) |
+| 6 | **Observability** | `costUsd`/`elapsedMs` per verdict · `notify`→phone · `loop.onIteration` seam (no impl) · cost-ledger (P0) | H·F6 | 🔴 **GAP** — no run-log/trace/drift signal; kiri's own thinnest surface |
+
+**SDLC-phase mapping (the paper's 4 phases → kiri's flow):**
+- **Configure the harness** (planning) = the `plan/` + `FORK-PHASE-*` docs + the phase-author hat + `kiri init`/`setup`.
+- **Run the harness** (implementation) = the wiggum loop executes in the sandbox (organ 3) using tools (organ 2).
+- **Feedback loop** (testing/QA) = the gate (`verify + tests + consult` → `verdictToGate`) **is** the think→act→observe loop; orchestration routes failures back.
+- **Observe** (review/deploy) = hooks (organ 5) block bad commits; observability (organ 6) tracks cost/latency/drift.
+
+**The framing's payoff — the two thin organs are now visible, tracked work:**
+- **Sandbox (3):** an unattended 27B running `bash` needs real confinement — path/network allow-list, `createReadOnlyTools` for the auditor, no-escape exec. → slot into **H** (next to redact/atomic-file) or a small dedicated module.
+- **Observability (6):** a per-iteration run-log/trace (the `loop.onIteration` seam already exists), the cost-ledger (P0), and a drift signal (repeated-`blocked`, rising cost-per-phase). → slot a thin observability slice into **F6/H**.
+
+Organs 1·4·5 are already deliberately covered by existing phases. **Do not let organs 3 & 6 stay thin just because the model seems to work without them — that is the exact "blame the model" trap the paper warns against.**
+
+---
+
 ## 2. Build sequencing (critical path)
 P0 hardening is the gate in front of everything; then the executor half; then bootstrap; then the factory.
 

@@ -25,6 +25,18 @@ Specifically:
 - Continuous nudges (discipline file, hooks, lint) prevent the executor from snowballing into wrong territory between audits.
 - Notifications surface audit verdicts to the user's phone so they know when to intervene.
 
+## Harness engineering (the frame this is built on)
+
+This project is an instance of the thesis in *"The new SDLC with vibe coding"* (May 2026): **Agent = Model + Harness.** The model is one input; the harness — instructions, tools, sandbox, orchestration, hooks, observability — dominates behaviour. *"Most agent failures, examined honestly, are configuration failures."* That **is** the anti-slop thesis above restated: a 27B doesn't fail because it's a 27B, it fails where the harness doesn't catch it. kiri's job is to *be that harness*. (The six organs → kiri's pieces → honest status, incl. the two thin ones — sandbox & observability — live in `docs/ROADMAP.md §1.5`.)
+
+**The economics are the wedge.** Vibe coding is low-CapEx / high-OpEx: cheap to start, but unstructured context + fix-my-own-mistakes loops burn tokens at low first-pass success, and maintenance/security debt compounds. Agentic engineering inverts it — higher upfront CapEx (specs, tests, structured context) for low marginal OpEx. kiri is the high-CapEx / low-OpEx play, concretely:
+
+- **Context engineering as a financial lever** — never pass the whole repo; the executor reads **one scoped file at a time** and re-grounds against canonical docs (*context is a cache*). Dense, high-signal payload → higher first-pass success → fewer trial-and-error loops.
+- **Tests/specs as the contract, written first** — the phase-author hat + TDD-per-task make intent a *falsifiable test before a line is generated*, not a vibe. "The test and eval suite communicates intent more precisely than any prompt."
+- **Model routing as cost strategy** — and kiri routes *more* aggressively than the paper's default example: it puts the **cheap local model on the bulk (implementation)** and spends the **expensive frontier only at phase boundaries (review)**, because per-turn frontier is ~100×. Same financial logic, inverted because implementation is the common event and review is the rare one.
+
+**North star:** *generation is solved; verification, judgment, and direction are the craft.* kiri is a **verification harness** — the human directs, the local model generates, the harness (consult + the gate + the nudges + observability) verifies. Build every phase to strengthen one harness organ; when something goes wrong, **suspect the harness before the model.**
+
 ## What this is NOT
 
 - **Not a chat platform.** We don't manage user sessions, route messages, or run a daemon. Notifications are one-way (verdict → phone). pi-local-llm-provider already does the chat-platform thing if you need that.

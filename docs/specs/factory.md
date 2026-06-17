@@ -80,7 +80,7 @@ Three sources, mixable, each **provenance-tagged** so a pass is never misread:
 
 ### 5.3 Rubric
 
-A small YAML of dimensions, each either **objective** (deterministic check against the answer key — e.g. found-planted-bug, cites file:line) or **judged** (consult scores it — e.g. response quality). Graduation = weighted score ≥ threshold, with objective dimensions weighted above judged ones, and real/harvested cases weighted above synthetic.
+*An eval without a rubric measures nothing* (the paper's line, and ours). Score against its **canonical dimensions — task success · tool-use quality · trajectory compliance · hallucination · response quality** — each declared **objective** (deterministic check vs the answer key — e.g. found-planted-bug at `file:line`, zero hallucinated imports) or **judged** (consult scores it — e.g. response quality). Graduation = weighted score ≥ threshold, with objective dimensions weighted above judged, and real/harvested cases weighted above synthetic. (These five are also kiri's own VISION failure-mode list in disguise — the rubric *is* the anti-slop contract, applied to an agent instead of a phase.)
 
 ## 6. How it reuses existing kiri primitives
 
