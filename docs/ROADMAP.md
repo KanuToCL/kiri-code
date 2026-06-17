@@ -26,7 +26,7 @@
 | `tell()` (ingest-only nudge layer) | 📐 designed | FORK-4 |
 | `kiri setup` (machine bootstrap / config) | ⚪ unspecced | **TODO: scope file** |
 | Greenfield planner (one-line goal → PLAN) | ⚪ unspecced | **TODO: scope file** |
-| Agent factory (`kiri create-agent`, eval gate) | ⚪ concept | FORK-8 (later) |
+| Agent factory (`kiri create-agent`, eval gate) | 📐 design spec'd | `docs/specs/factory.md` · FORK-8 (later) |
 | Long-horizon engine (compaction/persistence/branching) | 📐 designed (pi-native) | FORK-6 §Long-horizon + W7 |
 
 ---
@@ -67,7 +67,7 @@ The single source for "the phases." Each = one scoped file Qwen works task-by-ta
 | **F7** | Polish | README · LICENSE · smoke | `FORK-PHASE-7` | all | to author |
 | **S** | `kiri setup` | bootstrap/config | `docs/specs/kiri-setup` | F1 | unspecced |
 | **PL** | Planner | goal→PLAN — **one-liner milestone** | `docs/specs/planner` | F6 | unspecced |
-| **F8** | Factory | create-agent + eval gate | `docs/specs/factory` | F6,F2 | concept |
+| **F8** | Factory | create-agent + eval gate | `docs/specs/factory.md` ✅ | F6,F2 | design spec (decompose later) |
 
 **Canonical-docs discipline (long-horizon):** `PLAN`/`FORK-PLAN` = where we're going · `ONBOARDING` = where we are · `ROADMAP` = the long-term map. The executor **re-grounds against these** (enforced by F-N's `re-ground` nudge), trusting the files over conversation memory. Context is a cache; these docs are truth.
 
@@ -85,7 +85,7 @@ The single source for "the phases." Each = one scoped file Qwen works task-by-ta
 - `docs/specs/kiri-setup.md` (bootstrap/config) — **unspecced**
 - `docs/specs/planner.md` (goal→plan) — **unspecced**
 - `docs/specs/tooling.md` (executor tool roadmap — §5 below)
-- `docs/specs/factory.md` (FORK-8) — later
+- `docs/specs/factory.md` (FORK-8) — ✅ **design spec written** (decompose into `plan/FORK-PHASE-8.*` when the coder core is done)
 - (P0 safety modules are tasks inside the work order, not separate files)
 
 ---
@@ -149,4 +149,4 @@ My real tool surface this session: `Read · Write · Edit · Bash · Grep/Glob (
 ## 9. Unspecced (needs a scope file before Qwen can touch)
 1. **`kiri setup`** — model/server selection, consult backend (key vs CLI), persisted config for auto-run.
 2. **Greenfield planner** — vague one-line goal → `PLAN.md` + phase files (the front-end that makes `kiri init --wiggum "count lightbulbs"` possible).
-3. **Agent factory** (FORK-8) — `create-agent` born-with-eval-suite + the eval gate (mine the google-agents-cli workflow; engine = our consult-grader, local).
+3. **Agent factory** (FORK-8) — ✅ **design-spec'd** at `docs/specs/factory.md` (`create-agent` born-harnessed + eval-gate; `consult()` = grader, local; 3 case sources — BYO / `--generate` synthetic-with-planted-ground-truth / `--harvest` — each provenance-tagged). Still needs decomposition into `plan/FORK-PHASE-8.*` execution docs (via the phase-author hat) before Qwen — after the coder core.
