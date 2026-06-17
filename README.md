@@ -80,15 +80,22 @@ If no backend's key is set, `consult()` returns `{status: "skipped"}` cleanly. N
 
 See `ONBOARDING.md`.
 
-## Attribution
+## Credits & inspiration
 
-Prompts and discipline concepts in this project draw from:
+kiri stands on other people's work, and says so — for an anti-slop tool, honest provenance is the whole point.
 
-- **verifiable-plan** (this repo) — plan structure, TDD-per-step, commit-per-task discipline.
-- **10x-engineer / Superpowers** (`~/.claude/plugins/local/10x-engineer/`) — system prompt patterns, testing-anti-patterns, verification-before-completion.
-- **ring-of-elders** — continuous-nudge philosophy, out-of-band review at phase boundaries.
+**Built on:**
 
-All borrowed concepts are structural/pattern-level; no verbatim prompt text is lifted.
+- **[pi](https://www.npmjs.com/package/@mariozechner/pi-coding-agent)** (`@mariozechner/pi-coding-agent`, by Mario Zechner / *badlogic*) — kiri wraps pi's agent SDK: sessions, tools, skills, and extension hooks. pi is the engine; kiri is the discipline layer on top.
+
+**Inspired by (lineage, gratefully credited):**
+
+- **The Ralph loop** — Geoffrey Huntley ([ghuntley.com/ralph](https://ghuntley.com/ralph)) and Anthropic's `ralph-wiggum` plugin. kiri's autonomous "wiggum" loop is Ralph-style with one deliberate departure: it stops on an **objective audit gate** (`verify + tests + consult()`), not the model's self-declared *"done"* — because a small local model will cheerfully hallucinate that it's finished.
+- **`google-agents-cli`** (Google ADK; `uvx google-agents-cli`) — its *generate → grade → optimize* "graduation gate" workflow shapes kiri's planned agent-factory. kiri reimplements that workflow locally, using its own `consult()` as the grader instead of a hosted eval service.
+- **[ponytail](https://github.com/DietrichGebert/ponytail)** (MIT, by Dietrich Gebert) — a "lazy senior dev" anti-bloat ruleset, and a sibling in spirit: ponytail fights *writing too much code*, kiri fights *lying about code*. Its agent-portability layout and benchmark-as-receipts discipline informed kiri's factory and eval direction.
+- **Open engineering-discipline skills** (the *10x-engineer* / *Superpowers* families) and a **multi-agent review-council methodology** — system-prompt patterns, testing-anti-patterns, verification-before-completion, and out-of-band review at phase boundaries. Plan structure / TDD-per-step / commit-per-task discipline come from this repo's own `verifiable-plan` lineage.
+
+All borrowed ideas are structural/pattern-level; no verbatim prompt text is lifted. Names are credited to their authors; kiri claims only its own synthesis.
 
 ## License
 
