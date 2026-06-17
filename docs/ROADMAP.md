@@ -50,6 +50,26 @@ Deferred / parallel: FORK-3 (consult internalize), FORK-4 (tell), FORK-5 (hooks)
 
 ---
 
+## 2b. Implementation Phases (canonical, ordered)
+The single source for "the phases." Each = one scoped file Qwen works task-by-task.
+
+| # | Phase | Delivers | Scoped file | Deps | Status |
+|---|---|---|---|---|---|
+| **H** | Hardening | 11 P0s + safety modules (gate/cost-ledger/redact/atomic-file) | audit work order ✅ | — | planned |
+| **F1** | Identity / SDK-wrap | kiri bin · system prompt · `createAgentSession` · deps · index/license | `FORK-PHASE-1` | H | to author |
+| **F2** | Skills bundle | MANIFEST · vendor · `loadSkillsFromDir` · ban-token | `FORK-PHASE-2` | F1 | to author |
+| **F6** | Wiggum loop | W1–W7 (loop + long-horizon) — **demo milestone** | `FORK-PHASE-6-wiggum` ✅ | H,F1,F2 | planned |
+| **F-N** | Nudge system | deterministic lifecycle nudges + canonical-docs `re-ground` | `FORK-PHASE-N-nudges` ✅ | F1 | planned |
+| **F3** | Consult internalize | consult fires from the core | `FORK-PHASE-3` | F1 | to author |
+| **F4** | `tell()` | ingest-only verdict→context | `FORK-PHASE-4` | F6 | to author |
+| **F5** | Hooks + commit-msg | git hooks + provenance-trailer enforcement | `FORK-PHASE-5` | — | to author |
+| **F7** | Polish | README · LICENSE · smoke | `FORK-PHASE-7` | all | to author |
+| **S** | `kiri setup` | bootstrap/config | `docs/specs/kiri-setup` | F1 | unspecced |
+| **PL** | Planner | goal→PLAN — **one-liner milestone** | `docs/specs/planner` | F6 | unspecced |
+| **F8** | Factory | create-agent + eval gate | `docs/specs/factory` | F6,F2 | concept |
+
+**Canonical-docs discipline (long-horizon):** `PLAN`/`FORK-PLAN` = where we're going · `ONBOARDING` = where we are · `ROADMAP` = the long-term map. The executor **re-grounds against these** (enforced by F-N's `re-ground` nudge), trusting the files over conversation memory. Context is a cache; these docs are truth.
+
 ## 3. Scoped file map (what Qwen reads, one at a time)
 
 **Exist:**
