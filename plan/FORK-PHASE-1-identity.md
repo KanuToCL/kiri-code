@@ -25,7 +25,8 @@ If `docs/PI-SDK-SURFACE.md` is missing, **F0 isn't done — go do F0 first.**
 ## API hazards (read before any code)
 | Reality (from F0 / SDK) | The mistake to avoid |
 |---|---|
-| `createAgentSession(opts)` opts are `cwd · model · modelRegistry · thinking · noTools · tools · sessionManager · settingsManager` | passing `systemPrompt:` — **there is no such option**; set the prompt via the mechanism F0 recorded in `PI-SDK-SURFACE.md` §0.2 |
+| `createAgentSession(opts)` opts (14 fields, per F0): `cwd · agentDir · authStorage · modelRegistry · model · thinkingLevel · scopedModels · noTools · tools · customTools · resourceLoader · sessionManager · settingsManager · sessionStartEvent` | passing `systemPrompt:` (**no such field**) or `thinking` (the real field is **`thinkingLevel`**); set the prompt via F0's confirmed path: `DefaultResourceLoader({ systemPrompt })` → `getSystemPrompt()` (replace, not append) |
+| pi is **ESM-only** | `require('@mariozechner/pi-coding-agent')` THROWS — any smoke must use `node --input-type=module -e "import('...')"` |
 | pi/`pi-ai`/`typebox` are imported at runtime | leaving them in `devDependencies` → crashes under `npm install --omit=dev` |
 | the model is a `Model<any>` from the registry / local recipe (F0 §0.3) | hardcoding a cloud model id for the executor |
 
