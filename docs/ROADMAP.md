@@ -28,12 +28,14 @@
 | Greenfield planner (one-line goal → PLAN) | ⚪ unspecced | **TODO: scope file** |
 | Agent factory (`kiri create-agent`, eval gate) | 📐 design spec'd | `docs/specs/factory.md` · FORK-8 (later) |
 | Long-horizon engine (compaction/persistence/branching) | 📐 designed (pi-native) | FORK-6 §Long-horizon + W7 |
+| **Sandbox / exec confinement** (harness organ 3) | 🔴 gap (prose only) | **H** (safety module) |
+| **Observability** — run-log/trace/drift (harness organ 6) | 🔴 gap | **F6** slice + cost-ledger (P0) |
 
 ---
 
 ## 1.5 Harness map — the coder core IS a harness (Agent = Model + Harness)
 
-> Per *"The new SDLC with vibe coding"* (26–30 May 2026): the model is **one input**; the **harness** — instructions, tools, sandboxes, orchestration, hooks, observability — dominates behaviour. *"Most agent failures, examined honestly, are configuration failures."* That is kiri's anti-slop thesis verbatim: correctness lives in the harness, not the model. So the coder core must deliberately cover **all six organs** — and we judge every phase by which organ it strengthens. Honest status:
+> Per *"The new SDLC with vibe coding"* (26–30 May 2026): the model is **one input**; the **harness** — instructions, tools, sandboxes, orchestration, hooks, observability — dominates behaviour. *"Most agent failures, examined honestly, are configuration failures."* That is kiri's anti-slop thesis verbatim: correctness lives in the harness, not the model. So the coder core must deliberately cover **all six organs** — and we judge every phase by which organ it strengthens. The *depth* of the mentality (the 7 ways the model is made disposable, beyond guardrails) is `docs/specs/harness.md`. Honest status:
 
 | # | Harness organ | kiri coder-core pieces | Owner | Status |
 |---|---|---|---|---|
@@ -51,8 +53,8 @@
 - **Observe** (review/deploy) = hooks (organ 5) block bad commits; observability (organ 6) tracks cost/latency/drift.
 
 **The framing's payoff — the two thin organs are now visible, tracked work:**
-- **Sandbox (3):** an unattended 27B running `bash` needs real confinement — path/network allow-list, `createReadOnlyTools` for the auditor, no-escape exec. → slot into **H** (next to redact/atomic-file) or a small dedicated module.
-- **Observability (6):** a per-iteration run-log/trace (the `loop.onIteration` seam already exists), the cost-ledger (P0), and a drift signal (repeated-`blocked`, rising cost-per-phase). → slot a thin observability slice into **F6/H**.
+- **Sandbox (3):** an unattended 27B running `bash` needs real confinement — path/network allow-list, `createReadOnlyTools` for the auditor, no-escape exec. → **slotted** (owned in §1 inventory): **H**, next to redact/atomic-file.
+- **Observability (6):** a per-iteration run-log/trace (the `loop.onIteration` seam already exists), the cost-ledger (P0), and a drift signal (repeated-`blocked`, rising cost-per-phase). → **slotted** (owned in §1 inventory): **F6** slice + cost-ledger.
 
 Organs 1·4·5 are already deliberately covered by existing phases. **Do not let organs 3 & 6 stay thin just because the model seems to work without them — that is the exact "blame the model" trap the paper warns against.**
 

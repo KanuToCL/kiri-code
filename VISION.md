@@ -37,6 +37,8 @@ This project is an instance of the thesis in *"The new SDLC with vibe coding"* (
 
 **North star:** *generation is solved; verification, judgment, and direction are the craft.* kiri is a **verification harness** — the human directs, the local model generates, the harness (consult + the gate + the nudges + observability) verifies. Build every phase to strengthen one harness organ; when something goes wrong, **suspect the harness before the model.**
 
+*How deep this goes — the 7 ways the model is made disposable, beyond guardrails: `docs/specs/harness.md`.*
+
 ## What this is NOT
 
 - **Not a chat platform.** We don't manage user sessions, route messages, or run a daemon. Notifications are one-way (verdict → phone). pi-local-llm-provider already does the chat-platform thing if you need that.
