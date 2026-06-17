@@ -11,28 +11,50 @@ The **system of record is on disk, not in the model's context**:
 - The executor **re-grounds against these every N turns** (the `re-ground` nudge, N2) — it trusts the files, not its conversation memory. **Context is a cache; these docs are truth.** (Same line ROADMAP.md §2b and the system-reminder layer make.)
 
 ## Binding discipline (restated — applies to every task here; the executor forgets the globals)
-1. **Commit after each task.** Edited code + not committed = task unfinished.
+1. **Commit after each task** — and the commit must be **green under the repo's real `pre-commit` hook run standalone** (if one is configured). `--no-verify` / `git commit -n` is **banned** (CLAUDE.md rule 7): a task whose only way to land is to skip the hook is mis-authored. Edited code + not committed = task unfinished.
 2. **Update `ONBOARDING.md` "Resume here:" in the SAME commit** as the code change.
 3. **3-fail rule:** a verify that fails 3 honest times → STOP, append to `KNOWN_ISSUES.md`, ask. Do not loop, do not fake green.
 4. **No speculative scope.** Only the symbols this task names. In particular: **do NOT "fix" `post-edit-test.ts`'s latent `event.args` bug** (see hazards) — N1 is a *behavior-preserving* migration; that fix is a separate, unscoped change.
-5. **Never fake a green by editing the assertion.** If a nudge test is red, fix the nudge, not the `expect`.
+5. **Never fake a green — the frozen set is un-loosenable AND un-removable.** A nudge test's **frozen contract** = its literal value/regex/threshold (e.g. `REGROUND_EVERY === 4`, `LOOP_GUARD_K === 3`, `toEqual([4,8,12])`, the steer text regexes) **AND** the test's *existence, run-state, and input domain*. You may NOT: edit the `expect`, loosen a threshold, **delete** a frozen test, **`.skip`/`.only`** it, or **narrow its scanned input** (e.g. feed `reGround.when` only turns that fire so the silent-side assertion never runs). If a frozen test is red, fix the **nudge**, never the test. Degrading any nudge test to `toBeTruthy()` / `toBeGreaterThan(0)` is the same violation as deleting it (the anti-fabrication guardrail + DoD assert against this).
 6. **Never invent a pi API.** Every `pi.*` call and every `event.*` field used here is verified below against `node_modules/@mariozechner/pi-coding-agent/dist/core/extensions/types.d.ts`. If you reach for a symbol not listed, STOP — read the `.d.ts`, don't guess.
 
-## Prerequisites
+## Prerequisites (hard-gated by the pre-flight below — ingredient 0)
 - **FORK-1** (extension wiring via the pi SDK: `bootSession`, the prompt mechanism). If `src/boot.ts` is absent, **F1 isn't done — go do F1 first.**
 - The 3 legacy extensions exist at `extensions/{reflect-before-act,post-edit-test,tool-call-lint}.ts`.
+- **Version pin:** every `pi.*` / `event.*` `file:line` citation in the hazards table below is read at **`@mariozechner/pi-coding-agent@0.73.1`**, `dist/core/extensions/types.d.ts`. The pre-flight smart-STOPs on a version mismatch (re-confirms the cited symbols still resolve; proceeds + records the new version if they do — does not false-STOP on a benign patch bump).
 
-## Pre-flight (run first; if any line's output differs, STOP & ask)
+## Pre-flight — EXECUTABLE gate (step 0; run it first — if it exits non-zero, STOP, do not start any task)
 ```bash
+set -e
 cd "$(git rev-parse --show-toplevel)"
-test -f extensions/reflect-before-act.ts && echo legacy-ok      # expect: legacy-ok
-test -f extensions/post-edit-test.ts && test -f extensions/tool-call-lint.ts && echo legacy3-ok  # expect: legacy3-ok
-test -f src/boot.ts && echo f1-ok                                # expect: f1-ok   (FORK-1 done)
-npm install >/dev/null 2>&1 && npm run build >/dev/null 2>&1 && echo build-ok   # expect: build-ok
-npm test 2>&1 | grep -E "Tests "                                # expect: Tests <N> passed  (record N; new nudge tests add to it)
-git status --porcelain                                          # expect: empty
+# ── toolchain presence ──
+command -v node >/dev/null && command -v npm >/dev/null || { echo "STOP: node/npm not on PATH"; exit 1; }
+node --version | grep -qE 'v(2[0-9]|[3-9][0-9])\.' || { echo "STOP: need node >= 20"; exit 1; }
+# ── prereq files (ingredient 0) ──
+test -f src/boot.ts || { echo "STOP: src/boot.ts missing — FORK-1 isn't done, go do F1 first"; exit 1; }
+test -f extensions/reflect-before-act.ts || { echo "STOP: extensions/reflect-before-act.ts missing — legacy extension gone, FORK-0/FORK-1 not as expected"; exit 1; }
+test -f extensions/post-edit-test.ts && test -f extensions/tool-call-lint.ts || { echo "STOP: legacy post-edit-test.ts / tool-call-lint.ts missing"; exit 1; }
+# ── version pin → smart-STOP (re-confirm cited symbols resolve before STOPping on a bump) ──
+D=node_modules/@mariozechner/pi-coding-agent/dist/core/extensions/types.d.ts
+test -f "$D" || { echo "STOP: pi types.d.ts not found — run npm install"; exit 1; }
+VER=$(node -p "require('@mariozechner/pi-coding-agent/package.json').version")
+if [ "$VER" != "0.73.1" ]; then
+  # benign bump? only STOP if a cited symbol no longer resolves at the new version.
+  for sym in 'deliverAs?: "steer" | "followUp"' 'turnIndex: number' 'type: "tool_execution_start"' 'type: "tool_execution_end"' 'type: "agent_end"' 'args: any'; do
+    grep -qF "$sym" "$D" || { echo "STOP: pi bumped to $VER and cited symbol [$sym] no longer resolves — re-ground the hazards table before proceeding"; exit 1; }
+  done
+  echo "note: pi is $VER (pinned doc was 0.73.1) but all cited symbols still resolve — recording new version and proceeding"
+  grep -q "^PHASE_N_PI_VER:" ONBOARDING.md || echo "PHASE_N_PI_VER: $VER" >> ONBOARDING.md
+fi
+# ── clean tree + build ──
+test -z "$(git status --porcelain)" || { echo "STOP: working tree dirty"; exit 1; }
+npm install >/dev/null 2>&1 && npm run build >/dev/null 2>&1 || { echo "STOP: install/build failed"; exit 1; }
+# ── capture + persist this phase's BASE (starting green count); the DoD reads it back, never re-measures ──
+BASE=$(npm test 2>&1 | grep -oE '[0-9]+ passed' | head -1 | grep -oE '^[0-9]+')
+grep -q '^PHASE_N_BASE:' ONBOARDING.md || echo "PHASE_N_BASE: $BASE" >> ONBOARDING.md
+echo "preflight-ok BASE=$BASE" || { echo "PRE-FLIGHT FAILED — STOP"; exit 1; }
 ```
-If `src/boot.ts` is missing, **F1 isn't done — stop and do F1.** Record the pre-flight `npm test` pass count as `BASE` — the DoD checks `BASE + <new nudge tests>`.
+Commit the `PHASE_N_BASE:` line as task N0 before T N1. On a crash-resume the existing `PHASE_N_BASE:` line is reused (the `grep -q` guard) — **never re-measured**, so a partial run's already-committed nudge tests can't pollute BASE. **Every count downstream is `BASE + delta` or `≥ N` — never a brittle absolute.**
 
 ## API hazards (read before any code — verified against `dist/core/extensions/types.d.ts`)
 | Reality (verified at pi-coding-agent@0.73.1) | The mistake to avoid |
@@ -46,7 +68,13 @@ If `src/boot.ts` is missing, **F1 isn't done — stop and do F1.** Record the pr
 | `tool_call` event is the **blockable pre-exec** hook → `{ type, toolName, input }`, handler may return `{ block?: boolean, reason?: string }`. Built-in tool inputs are typed (`BashToolCallEvent.input.command`). | confusing `tool_call` (pre, blockable, `input`) with `tool_execution_start` (pre, observe-only, `args`). The legacy `tool-call-lint` uses `tool_execution_start` + `args.command` — **keep it as-is in N1** (no behavior change). New `api-verify` (N6) also uses `tool_execution_start` for parity with the legacy linter. |
 | There is no built-in turn-level "consecutive fails" / "last commit" state. | reading `event.consecutiveFails` — it does not exist. The registry maintains its own `NudgeState` (N1) and the nudges read it via the injected `getState()`. |
 
-**Why a fake `pi` in tests (not a real session):** every nudge test drives the handler directly through a fake `pi` that records `on(event, cb)` and `sendUserMessage(msg, opts)` — the exact pattern proven in `plan/PHASE-FIX2.md` (FIX2-3, the reflect test). No real `createAgentSession`, no network, deterministic turn-by-turn assertions.
+**Why a fake `pi` in tests (not a real session):** every nudge test drives the handler directly through a fake `pi` that records `on(event, cb)` and `sendUserMessage(msg, opts)` — the exact pattern proven in `plan/PHASE-FIX2.md` (FIX2-3, the reflect test). No real `createAgentSession`, no network, deterministic turn-by-turn assertions. **A nudge that fires on a pi lifecycle event is tested against this fake `ExtensionAPI`, NEVER a real session** — no test may `createAgentSession`, open a socket, or touch the real repo; if a test needs a throwaway repo, use `mkdtemp` + `git init`, never the live working tree.
+
+## Per-task contract (applies to every task N0–N7)
+- **Idempotent — check-before-create / skip-if-already-registered.** A crashed phase must re-run cleanly. The nudge-registry loader (`loadNudges`) must **skip a nudge whose `id` is already bound** (track bound ids; don't double-`pi.on` the same id) so re-running the loader after a partial run does not double-fire. File creation is check-before-create (`existsSync` guards); `ONBOARDING` lines use the `grep -q … ||` append-once pattern.
+- **Isolated.** Tests use the fake `pi` above (or `mkdtemp`); they do NOT mutate the real repo, depend on host tools, or hit the network.
+- **Each commit green under the real `pre-commit` standalone** (if configured); `--no-verify` banned. Scope each task's tests so its commit is independently green — the registry grows additively (each task appends one `Nudge` + one `it(...)`), so no commit is red on its own.
+- **Snippets compile** against the declared runtime and reference only the verified pi symbols in the hazards table.
 
 ---
 
@@ -99,6 +127,11 @@ describe("fork-N nudge registry", () => {
     expect(ids).toContain("reflect-before-act");
     expect(ids).toContain("post-edit-test");
     expect(ids).toContain("tool-call-lint");
+    // Idempotent: loading the SAME nudges into the SAME pi a second time binds nothing
+    // new (crash-resume safety) — total bindings unchanged, not doubled.
+    loadNudges(pi, ALL_NUDGES, getState);
+    const afterSecond = Object.values(handlers).reduce((a, b) => a + b.length, 0);
+    expect(afterSecond).toBe(ALL_NUDGES.length);
   });
 
   it("test_nudge_reflect_preserves_legacy_behavior", async () => {
@@ -146,13 +179,19 @@ export interface Nudge {
   action?: (pi: ExtensionAPI, event: any, state: NudgeState) => void;
 }
 
-/** Bind every nudge to its declared event exactly once. */
+/** Bind every nudge to its declared event exactly once. Idempotent: re-running
+ *  the loader (e.g. after a crash-resume) skips any nudge id already bound. */
+const _bound = new WeakMap<ExtensionAPI, Set<string>>();
 export function loadNudges(
   pi: ExtensionAPI,
   nudges: Nudge[],
   getState: () => NudgeState,
 ): void {
+  const seen = _bound.get(pi) ?? new Set<string>();
+  _bound.set(pi, seen);
   for (const n of nudges) {
+    if (seen.has(n.id)) continue;     // skip-if-already-registered → idempotent re-run
+    seen.add(n.id);
     pi.on(n.event as any, async (event: any) => {
       const state = getState();
       if (!n.when(event, state)) return;
@@ -505,32 +544,54 @@ The trap here is **a nudge test that passes without proving the nudge actually f
 
 A second trap: **silently "fixing" `post-edit-test.ts`'s `event.args` bug during the N1 migration.** That is out of scope (discipline rule 4). Port it byte-for-byte; if it bothers you, file it in `KNOWN_ISSUES.md`, don't fix it here.
 
-## Definition of Done (falsifiable — if any line is false, NOT done; do not advance)
+## Definition of Done — EXECUTABLE falsifiable checklist (`set -e`; if any line is false, NOT done)
 ```bash
+set -e
 cd "$(git rev-parse --show-toplevel)"
-test -f src/nudges/registry.ts && echo ok-registry                         # expect: ok-registry
-npm run build >/dev/null 2>&1 && echo ok-build                             # expect: ok-build
-npm test -- nudges 2>&1 | grep -E "Tests "                                # expect: Tests  9 passed  (≥ 9; N1×3 + N2..N7 ×1 each + legacy-removed)
-npm test 2>&1 | grep -E "Tests "                                          # expect: BASE + new nudge tests, 0 failed
-# every nudge is registered in ALL_NUDGES:
-grep -c "id:" src/nudges/registry.ts                                      # expect: >= 9
-# the 3 legacy extensions migrated (Path A): files gone, single loader present:
-ls extensions/nudges.ts >/dev/null 2>&1 && echo ok-loader                 # expect: ok-loader
-test ! -f extensions/reflect-before-act.ts && echo ok-migrated            # expect: ok-migrated  (Path A)
-# the canonical-docs doctrine is enforced — re-ground names the docs:
-grep -q "ONBOARDING" src/nudges/registry.ts && echo ok-doctrine          # expect: ok-doctrine
-# no nudge test degraded to a toothless assertion:
-grep -E "toBeTruthy\(\)|toBeGreaterThan\(0\)" tests/test_nudges.test.ts && echo "BANNED ASSERT FOUND" || echo ok-no-toothless  # expect: ok-no-toothless
-git status --porcelain                                                    # expect: empty
-git log --oneline | grep -c "forkN task"                                 # expect: >= 7
+test -f src/nudges/registry.ts || { echo "FAIL: src/nudges/registry.ts missing"; exit 1; }
+npm run build >/dev/null 2>&1 || { echo "FAIL: build broken"; exit 1; }
+# ── counts are BASE-relative: BASE read from ONBOARDING, never re-measured, never a hardcoded absolute ──
+BASE=$(grep '^PHASE_N_BASE:' ONBOARDING.md | sed -E 's/.*:[[:space:]]*([0-9]+).*/\1/'); test -n "$BASE" || { echo "FAIL: PHASE_N_BASE not in ONBOARDING (pre-flight not run/committed)"; exit 1; }
+# 9 new nudge tests: N1 (registry + reflect-preserve + legacy-removed) + N2..N7 ×1 each = 9
+NUDGE=$(npm test -- nudges 2>&1 | grep -oE '[0-9]+ passed' | head -1 | grep -oE '^[0-9]+'); test "$NUDGE" -ge 9 || { echo "FAIL: nudge tests $NUDGE < 9"; exit 1; }
+NOW=$(npm test 2>&1 | grep -oE '[0-9]+ passed' | head -1 | grep -oE '^[0-9]+'); test "$NOW" -eq "$((BASE + 9))" || { echo "FAIL: total $NOW != BASE($BASE)+9"; exit 1; }   # BASE + 9, read from ONBOARDING
+npm test 2>&1 | grep -qE "[0-9]+ failed" && { echo "FAIL: a test is red"; exit 1; } || true
+# ── every nudge registered in ALL_NUDGES ──
+test "$(grep -c '  id:' src/nudges/registry.ts)" -ge 9 || { echo "FAIL: < 9 nudges declared"; exit 1; }
+# ── legacy 3 migrated (Path A): files gone, single loader present ──
+test -f extensions/nudges.ts || { echo "FAIL: extensions/nudges.ts loader missing"; exit 1; }
+test ! -f extensions/reflect-before-act.ts || { echo "FAIL: legacy reflect-before-act.ts not migrated (Path A)"; exit 1; }
+# ── canonical-docs doctrine enforced — re-ground names the on-disk docs (N2) ──
+grep -q "ONBOARDING" src/nudges/registry.ts || { echo "FAIL: re-ground doesn't name ONBOARDING (doctrine not enforced)"; exit 1; }
+# ── FROZEN TESTS still exist, un-.skip-ed, run over their FULL real target (not narrowed/dodged) ──
+grep -q 'REGROUND_EVERY).toBe(4)' tests/test_nudges.test.ts || { echo "FAIL: re-ground cadence test gone/loosened"; exit 1; }
+grep -q 'toEqual(\[4, 8, 12\])' tests/test_nudges.test.ts || { echo "FAIL: re-ground exact-turn-list assertion gone"; exit 1; }
+grep -q 'LOOP_GUARD_K).toBe(3)' tests/test_nudges.test.ts || { echo "FAIL: loop-guard threshold test gone/loosened"; exit 1; }
+grep -q 'toEqual(\[3, 4, 5\])' tests/test_nudges.test.ts || { echo "FAIL: loop-guard exact-fire-list assertion gone"; exit 1; }
+grep -q 'tool_execution_start' src/nudges/registry.ts || { echo "FAIL: progress/api-verify must read tool_execution_start (has args), not _end"; exit 1; }
+grep -E '\b(it|describe)\.(skip|only)\(' tests/test_nudges.test.ts && { echo "FAIL: a nudge test is .skip/.only-ed"; exit 1; } || true
+# ── no nudge test degraded to a toothless assertion ──
+grep -E "toBeTruthy\(\)|toBeGreaterThan\(0\)" tests/test_nudges.test.ts && { echo "FAIL: BANNED toothless assertion"; exit 1; } || true
+# ── clean tree + task commits ──
+test -z "$(git status --porcelain)" || { echo "FAIL: working tree dirty"; exit 1; }
+test "$(git log --oneline | grep -c 'forkN task')" -ge 7 || { echo "FAIL: < 7 forkN task commits"; exit 1; }
+echo "DoD: all checks passed"
 ```
-- [ ] all `# expect`s match · [ ] 7 nudge tasks committed · [ ] legacy 3 run via the registry (behavior unchanged) · [ ] `re-ground`/`prove-before-done`/`loop-guard` fire deterministically with exact-value assertions · [ ] no invented pi event/method (every `event` is in the verified set; every `pi.*` call is `on`/`sendUserMessage`).
+- [ ] all checks pass · [ ] 7 nudge tasks committed · [ ] legacy 3 run via the registry (behavior unchanged) · [ ] `re-ground`/`prove-before-done`/`loop-guard` fire deterministically with exact-value assertions · [ ] no invented pi event/method (every `event` is in the verified set; every `pi.*` call is `on`/`sendUserMessage`).
 
-## Out-of-band recheck (one real smoke test before ✅)
+**If any line is false, the phase is not done. Do not advance.**
+
+## Out-of-band recheck — EXECUTABLE + gated/skippable (one real smoke before ✅; ingredient 10)
 ```bash
+set -e
 cd "$(git rev-parse --show-toplevel)"
-# Drive the REAL registry through a fake pi over 13 turns + a commit + a stuck loop, and prove
-# the deterministic nudges fire on schedule against the ACTUAL exported code (not the test's view):
+# Gated/skippable: this smoke needs the BUILT registry. If dist isn't built and can't be,
+# SKIP with a KNOWN_ISSUES note rather than block the phase (no creds/cost involved here).
+test -f dist/src/nudges/registry.js || npm run build >/dev/null 2>&1 || {
+  echo "SKIP OOB: dist/src/nudges/registry.js absent and build failed — note in KNOWN_ISSUES.md"; exit 0;
+}
+# Drive the REAL registry through a fake pi over 13 turns + a stuck loop, and prove the
+# deterministic nudges fire on schedule against the ACTUAL exported code (not the test's view):
 node --input-type=module -e '
 import { loadNudges, ALL_NUDGES, REGROUND_EVERY, LOOP_GUARD_K } from "./dist/src/nudges/registry.js";
 const sent = []; const stops = [];
@@ -544,9 +605,10 @@ console.log("reground fired:", regrounds, "(expect", Math.floor(12/REGROUND_EVER
 st.consecutiveFails = LOOP_GUARD_K;
 for (const cb of (handlers["turn_end"]??[])) cb({turnIndex:13});
 console.log("loop-guard stops:", stops.length, "(expect >=1)");
-console.log(regrounds === Math.floor(12/REGROUND_EVERY) && stops.length >= 1 ? "SMOKE-OK" : "SMOKE-FAIL");
-'
-# expect: ...SMOKE-OK  (re-ground fired 3×, loop-guard stopped once, against the built registry)
+process.exit(regrounds === Math.floor(12/REGROUND_EVERY) && stops.length >= 1 ? 0 : 1);
+' || { echo "OOB SMOKE-FAIL — re-ground/loop-guard did not fire on schedule against the built registry"; exit 1; }
+echo "OOB SMOKE-OK"
+# expect: ...OOB SMOKE-OK  (re-ground fired 3×, loop-guard stopped once, against the built registry)
 ```
 
 ## Commit template
@@ -561,3 +623,28 @@ Audited-by: <auditor-model> (verdict: pass)
 Directed-by: human
 Tool: kiri-code
 ```
+
+## Auditor checklist
+> Run by an independent auditor per `prompts/auditor.md` §1.5. Each is a falsifiable grep/run; a failing line is a finding (`blocked` if a guard was deleted/`.skip`-ed/narrowed or the pre-flight is prose-only, else `patches-applied`).
+```bash
+cd "$(git rev-parse --show-toplevel)"
+# 1. Pre-flight is an EXECUTABLE gate (set -e + exits non-zero on failure), not skippable prose:
+grep -q 'set -e' plan/FORK-PHASE-N-nudges.md && grep -q 'PRE-FLIGHT FAILED — STOP' plan/FORK-PHASE-N-nudges.md && echo ok-preflight-gate
+# 2. Counts read BASE from ONBOARDING — no hardcoded absolute total snuck into the DoD:
+grep -q "grep '^PHASE_N_BASE:' ONBOARDING.md" plan/FORK-PHASE-N-nudges.md && echo ok-base-relative
+grep -qE 'expect\([^)]*\)\.toBe\(73\)|Tests +73 passed|Tests +78 passed' tests/test_nudges.test.ts && echo "FINDING: exemplar absolute count copied" || echo ok-no-absolute
+# 3. Every nudge has a real (non-banned) assertion — the registry test asserts exact binding count, cadences are exact lists:
+grep -q 'toBe(ALL_NUDGES.length)' tests/test_nudges.test.ts && echo ok-real-assert
+grep -E "toBeTruthy\(\)|toBeGreaterThan\(0\)" tests/test_nudges.test.ts && echo "FINDING: toothless assertion" || echo ok-no-toothless
+# 4. The hazard fix is honored: progress + api-verify read tool_execution_START (has args), NOT _end:
+grep -q "event: \"tool_execution_start\"" src/nudges/registry.ts && echo ok-start-not-end
+grep -nE 'tool_execution_end[^}]*args' src/nudges/registry.ts && echo "FINDING: reads args on tool_execution_end" || echo ok-no-args-on-end
+# 5. Frozen tests present, un-.skip-ed, run full target (not a narrowed/clean subset):
+grep -q 'toEqual(\[4, 8, 12\])' tests/test_nudges.test.ts && grep -q 'toEqual(\[3, 4, 5\])' tests/test_nudges.test.ts && echo ok-frozen-present
+grep -E '\b(it|describe)\.(skip|only)\(' tests/test_nudges.test.ts && echo "FINDING: a nudge test is .skip/.only" || echo ok-no-skip
+# 6. Coverage manifest present (last line of the phase doc):
+tail -1 plan/FORK-PHASE-N-nudges.md | grep -q '^Ingredients present:' && echo ok-manifest
+```
+Expect every `ok-*` to print and no `FINDING:` line. A missing `## Auditor checklist` block or any `FINDING:` is itself a finding.
+
+Ingredients present: 0✓ (Prerequisites hard-gate + pre-flight prereq `test -f` lines) 1✓ (header "Failure class this guards" + Canonical-docs doctrine) 2✓ (Binding discipline rules 1–6, frozen-set in rule 5) 3✓ (Pre-flight EXECUTABLE gate, step 0, BASE persisted via `grep -q '^PHASE_N_BASE:'`) 4✓ (API hazards table, verified @0.73.1 against `types.d.ts`) 5✓ (version pin + smart-STOP in pre-flight; n/a for an external source-dir/model endpoint — this phase has no per-machine input beyond the in-repo pi package, which the version-pin block resolves) 6✓ (N1–N7 each: failing test first · exact failure · skeleton/diff · verify with `# expect` · commit + ONBOARDING bump; Per-task contract: idempotent loader skip-if-already-registered, fake-`pi` isolation, pre-commit-green, snippets compile) 7✓ (decision trees: N1 A/B loader topology, N3 task-detection seam) 8✓ (Anti-fabrication guardrail: both-sides assertions + don't-fix-`post-edit-test`-bug) 9✓ (DoD EXECUTABLE `set -e` checklist, BASE+9 from ONBOARDING, frozen-test asserts, "Do not advance.") 10✓ (OOB recheck EXECUTABLE `|| exit 1` + gated/skippable on built `dist`) 11✓ (Commit template with `Implemented-by`/`Audited-by`/`Directed-by`/`Tool` trailers) 12✓ (`## Auditor checklist` block above)

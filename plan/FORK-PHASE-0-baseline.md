@@ -11,19 +11,41 @@
 3. **3-fail rule:** a verify that fails 3 honest times → STOP, append a one-paragraph note to `KNOWN_ISSUES.md`, ask the human. Do **not** loop, do **not** fake green.
 4. **No speculative scope.** This phase writes `docs/PI-SDK-SURFACE.md` and edits `ONBOARDING.md` (+ `package.json` for the pin in 0.4) **only**. Do not touch `src/`, `tests/`, or any other file.
 5. **Never invent an API.** Every symbol you record MUST come from an open `.d.ts` under `node_modules/@mariozechner/pi-coding-agent/dist/` or `node_modules/@mariozechner/pi-ai/dist/`, cited with its `file:line`. If you cannot find a symbol at the installed version, write `NOT FOUND at 0.73.1` — do **not** guess it exists.
-6. **Never fake a green by editing the assertion / the expected output.** If a `# expect:` doesn't match, the *doc* is wrong, not the world. Fix the doc.
+6. **Never fake a green by editing the assertion / the expected output, loosening a frozen contract, OR removing / `.skip`-ing / `.only`-ing a check or narrowing its scanned input so the assertion never fires.** If a `# expect:` doesn't match, the *doc* is wrong, not the world — fix the doc. The frozen set in this phase = every `# expect:` value AND each verify-grep's *existence and its input/target* (e.g. the `§0.1` section-count grep must keep scanning the real `docs/PI-SDK-SURFACE.md`, not a stub; the recipe typecheck must keep running against THIS repo's installed pi). Do not narrow a grep, point it at a clean file, or delete a check to dodge it.
 
-## Pre-flight (run first; if any line's output differs, STOP & ask)
+## Pre-flight — EXECUTABLE gate (step 0; run it first — if it exits non-zero, STOP, do not start any task)
 ```bash
+set -e
 cd "$(git rev-parse --show-toplevel)"                                   # never hardcode an absolute path
-node -e "console.log(require('./node_modules/@mariozechner/pi-coding-agent/package.json').version)"   # expect: 0.73.1
-node -e "console.log(require('./node_modules/@mariozechner/pi-ai/package.json').version)"             # expect: 0.73.1
-test -d node_modules/@mariozechner/pi-coding-agent/dist/core && echo dist-ok                          # expect: dist-ok
-npm test 2>&1 | grep -E "Tests "                                        # expect: Tests  73 passed | 4 skipped (77)
-git status --porcelain                                                  # expect: empty
+# toolchain presence
+command -v node >/dev/null || { echo "STOP: node not on PATH"; exit 1; }
+command -v npm  >/dev/null || { echo "STOP: npm not on PATH"; exit 1; }
+node --version | grep -qE 'v(2[0-9]|[3-9][0-9])\.' || { echo "STOP: need node >= 20 (pi is ESM-only)"; exit 1; }
+# prereq files: this is the FIRST fork phase — its only hard prereq is that pi is installed (no upstream phase to read from)
+test -d node_modules/@mariozechner/pi-coding-agent/dist/core || { echo "STOP: pi dist missing — run 'npm install' once, then re-run pre-flight"; exit 1; }
+test -d node_modules/@mariozechner/pi-ai/dist || { echo "STOP: pi-ai dist missing — run 'npm install' once, then re-run pre-flight"; exit 1; }
+# version pin — SMART-STOP: only abort if the cited symbols no longer resolve at the installed version (don't false-STOP on a benign patch bump like 0.73.1→0.73.2)
+PIVER=$(node -e "console.log(require('./node_modules/@mariozechner/pi-coding-agent/package.json').version)")
+AIVER=$(node -e "console.log(require('./node_modules/@mariozechner/pi-ai/package.json').version)")
+PI=node_modules/@mariozechner/pi-coding-agent/dist
+AI=node_modules/@mariozechner/pi-ai/dist
+if [ "$PIVER" != "0.73.1" ] || [ "$AIVER" != "0.73.1" ]; then
+  echo "NOTE: pi=$PIVER pi-ai=$AIVER (doc's file:line citations were read at 0.73.1) — re-confirming cited symbols still resolve…"
+  grep -q "interface CreateAgentSessionOptions" "$PI/core/sdk.d.ts" || { echo "STOP: CreateAgentSessionOptions no longer at sdk.d.ts at pi=$PIVER — re-ground §0.1 before proceeding"; exit 1; }
+  grep -q "thinkingLevel" "$PI/core/sdk.d.ts" || { echo "STOP: thinkingLevel field gone at pi=$PIVER — re-ground §0.1"; exit 1; }
+  grep -q "registerProvider" "$PI/core/model-registry.d.ts" || { echo "STOP: registerProvider gone at pi=$PIVER — re-ground §0.3"; exit 1; }
+  grep -q '"openai-completions"' "$AI/types.d.ts" || { echo "STOP: openai-completions KnownApi gone at pi-ai=$AIVER — re-ground §0.3"; exit 1; }
+  echo "version-drift-but-symbols-resolve: record pi=$PIVER in the doc header and proceed (do NOT false-STOP)"
+fi
+# clean tree
+test -z "$(git status --porcelain)" || { echo "STOP: working tree dirty — commit or stash before starting"; exit 1; }
+# capture + persist this phase's BASE (the pre-fork green count); the DoD reads it back, never re-measures
+BASE=$(npm test 2>&1 | grep -oE '[0-9]+ passed' | head -1 | grep -oE '^[0-9]+')
+test -n "$BASE" || { echo "STOP: could not parse a passing-test count from 'npm test'"; exit 1; }
+grep -q '^PHASE_0_BASE:' ONBOARDING.md || echo "PHASE_0_BASE: $BASE" >> ONBOARDING.md
+echo "preflight-ok BASE=$BASE"
 ```
-If pi is **not** `0.73.1`, STOP — this phase is pinned to that version and every `file:line` below assumes it.
-If `dist/core` is missing, run `npm install` once, then re-run the pre-flight.
+Commit the `PHASE_0_BASE:` line as **task 0.0** before Task 0.1. On a crash-resume the existing `PHASE_0_BASE:` line is reused (the `grep -q` guard) — never re-measured, so a partial run's already-committed recipe tests can't pollute BASE. **F0 is the BASELINE ESTABLISHER:** there is no prior phase to read a BASE from, so this step MEASURES the current pre-fork green count and RECORDS it as the canonical baseline for every count downstream (here and in F1's pre-flight). Every count below is `BASE + <delta>` read back from ONBOARDING — **never a hardcoded absolute** (the exemplar's `Tests 73 passed` / `76 passed` literals are a KNOWN DEFECT — this phase does not copy them).
 
 ## API hazards (read before you write a single line of the doc)
 | Reality (verified file:line, pi 0.73.1) | The mistake to avoid |
@@ -41,6 +63,8 @@ If `dist/core` is missing, run `npm install` once, then re-run the pre-flight.
 **What this guards:** F1 references `createAgentSession`, `AgentSession.prompt`, `SessionManager.inMemory`, `ModelRegistry`, etc. If those symbols/fields are recorded wrong, F1 ships code that doesn't compile or invents options. This file is F1's single source of truth.
 
 **Anti-fabrication guardrail for this task:** Every line you write MUST be copied from an open `.d.ts`, with the `file:line` you read it at. Before writing each symbol, run the grep that finds it. If a grep returns nothing, the symbol does **not** exist at 0.73.1 — record `NOT FOUND` and move on. Do not transcribe from memory or from the F1 doc (the F1 doc has known drift — see API hazards).
+
+**Idempotent (check-before-create), so a crashed phase re-runs cleanly:** if `docs/PI-SDK-SURFACE.md` already exists from a partial run, do **not** blindly overwrite it — `test -f docs/PI-SDK-SURFACE.md && echo "exists — extend/verify §0.1 sections, do not clobber"`. Create the file only if absent; otherwise reconcile the §0.1.1–0.1.5 sections against Step A and fix any drift in place. (Same for `mkdir -p docs` — it's already idempotent.)
 
 **Step A — gather the ground truth (run these; you will paste the relevant lines into the doc):**
 ```bash
@@ -377,7 +401,7 @@ npm test -- fork0_recipe 2>&1 | grep -E "Tests "                                
 
 **What this guards:** the carets (`^0.73.1`) in `package.json` let `npm install` silently pull a newer minor that moves every `.d.ts` line F0 just recorded. Pinning freezes the surface F1 was authored against. And `ONBOARDING.md` currently lies (it says "69/69 tests" and "Resume here: FORK-PHASE-0-baseline.md next" — the real suite is **73 passed / 4 skipped (77)**); this task corrects it.
 
-**Anti-fabrication guardrail:** the baseline number you record MUST be the literal output of `npm test`, not a number you remember. Run it, copy what it prints.
+**Anti-fabrication guardrail:** the baseline you record MUST be the literal `PHASE_0_BASE` value the pre-flight already measured and wrote to `ONBOARDING.md` (the pre-fork green count) — not a number you remember and not a re-measurement that would now include this phase's recipe tests. Read it back: `BASE=$(grep '^PHASE_0_BASE:' ONBOARDING.md | sed -E 's/.*:[[:space:]]*([0-9]+).*/\1/')`.
 
 **Test first** — append to `tests/test_fork0_recipe.test.ts`:
 ```ts
@@ -399,65 +423,86 @@ Run → `npm test -- fork0_recipe` → **expect: 1 failed** (`expected "^0.73.1"
 ```
 > Note: do **not** move them to `dependencies` here — that's F1/T1.1's job (no speculative scope). Just remove the carets in place under `devDependencies`.
 
-**Then record the baseline in `ONBOARDING.md`** — update the `**Resume here:**` line and the status line to the real numbers:
+**Then surface the baseline in `ONBOARDING.md`** — the canonical pre-fork count already lives in the `PHASE_0_BASE:` line the pre-flight wrote (task 0.0). Update the `**Resume here:**` line and reconcile the stale status line to that measured number (read it; do not hardcode `73` — `BASE=$(grep '^PHASE_0_BASE:' ONBOARDING.md | sed -E 's/.*:[[:space:]]*([0-9]+).*/\1/')`):
 ```
-- Resume here:  →  "F0 complete (docs/PI-SDK-SURFACE.md written, pi pinned 0.73.1, baseline 73 passed | 4 skipped). FORK-PHASE-1-identity.md next."
-- the "🟢 v0.1.0-rc1 ... 69/69 tests green" line  →  "73 passed | 4 skipped (77)"
+- Resume here:  →  "F0 complete (docs/PI-SDK-SURFACE.md written, pi pinned 0.73.1, baseline PHASE_0_BASE=$BASE passed pre-fork). FORK-PHASE-1-identity.md next."
+- the stale "🟢 v0.1.0-rc1 ... 69/69 tests green" line  →  "$BASE passed | <skipped> skipped pre-fork (see PHASE_0_BASE)"
 ```
+(The exemplar's prose froze `73`/`69` as literals — this phase writes the *measured* `PHASE_0_BASE` instead, so a benign upstream test add doesn't make the doc lie.)
 
 **Verify:**
 ```bash
 cd "$(git rev-parse --show-toplevel)"
 node -e "const p=require('./package.json');const a={...p.dependencies,...p.devDependencies};console.log(a['@mariozechner/pi-coding-agent']===a['@mariozechner/pi-ai']?a['@mariozechner/pi-ai']:'MISMATCH')"   # expect: 0.73.1
-npm install >/dev/null 2>&1 && npm test 2>&1 | grep -E "Tests "                          # expect: Tests  76 passed | 4 skipped (80)
-grep -q "73 passed" ONBOARDING.md && echo baseline-recorded                              # expect: baseline-recorded
+BASE=$(grep '^PHASE_0_BASE:' ONBOARDING.md | sed -E 's/.*:[[:space:]]*([0-9]+).*/\1/')
+npm install >/dev/null 2>&1; NOW=$(npm test 2>&1 | grep -oE '[0-9]+ passed' | head -1 | grep -oE '^[0-9]+'); test "$NOW" -eq "$((BASE + 3))" && echo ok-count   # expect: ok-count  (BASE + 3 recipe tests added in 0.2/0.3/0.4 — BASE read from ONBOARDING, never a hardcoded absolute)
+grep -q '^PHASE_0_BASE:' ONBOARDING.md && echo baseline-recorded                         # expect: baseline-recorded
 grep -q "FORK-PHASE-1-identity.md next" ONBOARDING.md && echo resume-updated             # expect: resume-updated
 npm test -- fork0_recipe 2>&1 | grep -E "Tests "                                         # expect: 3 passed
 ```
-> Why `76` and not `73`: you added exactly three `it()` cases to `tests/test_fork0_recipe.test.ts` (0.2, 0.3, 0.4). 73 prior + 3 new = **76 passed | 4 skipped (80)**. The **pi *pinned* baseline you record in `ONBOARDING.md` is `73 passed | 4 skipped`** — that's the pre-fork suite, what F1's pre-flight checks against. The `76` here is just this phase's run including the recipe tests. If `npm test` prints neither number, **count the literal output and reconcile before ✅** — do not advance on a mismatch.
+> Why `BASE + 3`: you added exactly three `it()` cases to `tests/test_fork0_recipe.test.ts` (0.2, 0.3, 0.4). `PHASE_0_BASE` (the pre-fork count the pre-flight measured) + 3 new = this phase's run. The baseline F1's pre-flight checks against is `PHASE_0_BASE` itself (the pre-fork suite, recorded in ONBOARDING) — **not** the `BASE + 3` you see here, which just includes this phase's recipe tests. **The number is read, never typed:** if `$NOW` ≠ `$((BASE + 3))`, count the literal `npm test` output and reconcile (did a test fail? did you add a 4th `it()`?) before ✅ — do not advance on a mismatch, and do not edit BASE to make the math work.
 
 **Commit:** `fork0 task 0.4: pin pi/pi-ai to exact 0.73.1; record real test baseline in ONBOARDING` (+ the ONBOARDING edits are IN this commit + trailers).
 
 ---
 
-## Definition of Done (falsifiable — if ANY line is false, the phase is NOT done; do not advance to F1)
+## Definition of Done — EXECUTABLE checklist (run it; if it exits non-zero the phase is NOT done; do not advance to F1)
 ```bash
+set -e
 cd "$(git rev-parse --show-toplevel)"
-test -f docs/PI-SDK-SURFACE.md && echo ok-file                                           # expect: ok-file
-grep -cE "^## §0\.[0-9]" docs/PI-SDK-SURFACE.md                                          # expect: >= 7  (0.1.1-0.1.5 + 0.2 + 0.3)
-grep -q "§0.2" docs/PI-SDK-SURFACE.md && grep -q "DefaultResourceLoader" docs/PI-SDK-SURFACE.md && echo ok-sysprompt   # expect: ok-sysprompt
-grep -q "§0.3" docs/PI-SDK-SURFACE.md && grep -q "registerProvider" docs/PI-SDK-SURFACE.md && echo ok-localmodel       # expect: ok-localmodel
-grep -qE "thinkingLevel" docs/PI-SDK-SURFACE.md && echo ok-no-thinking-typo              # expect: ok-no-thinking-typo  (guards F1's drift)
-node -e "const a={...require('./package.json').dependencies,...require('./package.json').devDependencies};process.exit(a['@mariozechner/pi-coding-agent']==='0.73.1'?0:1)" && echo ok-pinned   # expect: ok-pinned
-npm test 2>&1 | grep -E "Tests "                                                         # expect: matches the count you recorded in ONBOARDING (incl. fork0_recipe cases)
-git status --porcelain                                                                   # expect: empty
-git log --oneline | grep -c "fork0 task"                                                 # expect: >= 4
+test -f docs/PI-SDK-SURFACE.md || { echo "FAIL: docs/PI-SDK-SURFACE.md missing"; exit 1; }
+# §0.1.1–0.1.5 + §0.2 + §0.3 all present (>= 7 section headers):
+test "$(grep -cE '^## §0\.[0-9]' docs/PI-SDK-SURFACE.md)" -ge 7 || { echo "FAIL: missing §0.x sections (need >= 7)"; exit 1; }
+grep -q "DefaultResourceLoader" docs/PI-SDK-SURFACE.md || { echo "FAIL: §0.2 system-prompt mechanism not recorded"; exit 1; }
+grep -q "registerProvider" docs/PI-SDK-SURFACE.md || { echo "FAIL: §0.3 local-model mechanism not recorded"; exit 1; }
+# the surface doc records the REAL API fields (frozen ground truth F1 reads back):
+grep -q "thinkingLevel" docs/PI-SDK-SURFACE.md || { echo "FAIL: thinkingLevel not recorded (F1 will drift to 'thinking')"; exit 1; }
+grep -qE "NO .systemPrompt|no systemPrompt" docs/PI-SDK-SURFACE.md || { echo "FAIL: 'no systemPrompt field' correction not recorded"; exit 1; }
+# never put systemPrompt on createAgentSession anywhere in the doc (the exact mistake F1 must not inherit):
+grep -qE "systemPrompt:\s*[^}]*createAgentSession|createAgentSession\([^)]*systemPrompt" docs/PI-SDK-SURFACE.md && { echo "FAIL: doc puts systemPrompt on createAgentSession"; exit 1; } || true
+# pi pinned EXACT (no caret/tilde):
+node -e "const a={...require('./package.json').dependencies,...require('./package.json').devDependencies};process.exit(a['@mariozechner/pi-coding-agent']==='0.73.1'&&a['@mariozechner/pi-ai']==='0.73.1'?0:1)" || { echo "FAIL: pi/pi-ai not pinned to exact 0.73.1"; exit 1; }
+# the frozen recipe-typecheck tests still EXIST and run over the real targets (un-deletable/-skippable):
+grep -q "test_t0_2" tests/test_fork0_recipe.test.ts || { echo "FAIL: 0.2 recipe test removed"; exit 1; }
+grep -q "test_t0_3" tests/test_fork0_recipe.test.ts || { echo "FAIL: 0.3 recipe test removed"; exit 1; }
+grep -q "test_t0_4" tests/test_fork0_recipe.test.ts || { echo "FAIL: 0.4 pin test removed"; exit 1; }
+grep -qE "\.skip|\.only" tests/test_fork0_recipe.test.ts && { echo "FAIL: a recipe test is .skip/.only — frozen tests must run"; exit 1; } || true
+# count is BASE-relative (BASE read from ONBOARDING, never a hardcoded absolute):
+BASE=$(grep '^PHASE_0_BASE:' ONBOARDING.md | sed -E 's/.*:[[:space:]]*([0-9]+).*/\1/'); test -n "$BASE" || { echo "FAIL: PHASE_0_BASE missing from ONBOARDING"; exit 1; }
+NOW=$(npm test 2>&1 | grep -oE '[0-9]+ passed' | head -1 | grep -oE '^[0-9]+'); test "$NOW" -eq "$((BASE + 3))" || { echo "FAIL: green count $NOW != BASE($BASE)+3"; exit 1; }
+# ONBOARDING points at F1:
+grep -q "FORK-PHASE-1-identity.md next" ONBOARDING.md || { echo "FAIL: ONBOARDING 'Resume here' not pointed at F1"; exit 1; }
+# clean tree + commit provenance:
+test -z "$(git status --porcelain)" || { echo "FAIL: working tree dirty"; exit 1; }
+test "$(git log --oneline | grep -c 'fork0 task')" -ge 4 || { echo "FAIL: fewer than 4 fork0-task commits"; exit 1; }
+echo "DoD-ok"   # expect: DoD-ok
 ```
-- [ ] `docs/PI-SDK-SURFACE.md` exists, has §0.1.1–0.1.5 + §0.2 + §0.3 · [ ] both unknowns resolved with **file:line + a recipe that typechecks** · [ ] no `systemPrompt:` recorded as a `createAgentSession` option anywhere · [ ] `thinkingLevel` (not `thinking`) recorded · [ ] pi pinned to exact `0.73.1` · [ ] ONBOARDING "Resume here:" → F1, real baseline recorded.
-- [ ] **no file outside this phase's allowed set was changed.** Run and read the output — it must list ONLY those four paths:
+- [ ] `docs/PI-SDK-SURFACE.md` exists, has §0.1.1–0.1.5 + §0.2 + §0.3 · [ ] both unknowns resolved with **file:line + a recipe that typechecks** · [ ] no `systemPrompt:` recorded as a `createAgentSession` option anywhere · [ ] `thinkingLevel` (not `thinking`) recorded · [ ] pi pinned to exact `0.73.1` · [ ] ONBOARDING "Resume here:" → F1, `PHASE_0_BASE` baseline recorded.
+- [ ] **no file outside this phase's allowed set was changed.** Run and read the output — it must list ONLY those four paths (task 0.0's `PHASE_0_BASE` line touches only `ONBOARDING.md`, already in the set):
   ```bash
-  git diff --name-only HEAD~"$(git log --oneline | grep -c 'fork0 task')"..HEAD | sort
-  # expect (exactly, sorted):
-  #   ONBOARDING.md
-  #   docs/PI-SDK-SURFACE.md
-  #   package.json
-  #   tests/test_fork0_recipe.test.ts
+  set -e
+  N=$(git log --oneline | grep -c 'fork0 task'); CHANGED=$(git diff --name-only "HEAD~$N..HEAD" | sort -u)
+  EXPECTED=$'ONBOARDING.md\ndocs/PI-SDK-SURFACE.md\npackage.json\ntests/test_fork0_recipe.test.ts'
+  test "$CHANGED" = "$EXPECTED" || { echo "FAIL: changed-file set is not exactly the 4 allowed paths:"; echo "$CHANGED"; exit 1; }
+  echo "scope-ok"   # expect: scope-ok
   ```
   If any path under `src/` (or any other file) appears, you violated "no speculative scope" — revert it before advancing.
 
 **If any line is false, the phase is not done. Do not advance.**
 
-## Out-of-band recheck (one real smoke against reality — before marking ✅)
+## Out-of-band recheck — EXECUTABLE smoke against reality (before marking ✅; gated/skippable if pi isn't installed)
 ```bash
+set -e
 cd "$(git rev-parse --show-toplevel)"
+# GATE: this smoke needs the pi package present. If node_modules got wiped, skip-with-note rather than block the phase.
+test -d node_modules/@mariozechner/pi-coding-agent/dist || { echo "SKIP OOB: pi not installed — run 'npm install', then re-run; noting in KNOWN_ISSUES.md"; echo "F0 OOB skipped: pi package absent at recheck time" >> KNOWN_ISSUES.md 2>/dev/null || true; exit 0; }
 # 1. The surface doc's §0.2/§0.3 symbols are REAL runtime exports (not just transcribed types):
-node --input-type=module -e "import('@mariozechner/pi-coding-agent').then(p=>{const need=['createAgentSession','DefaultResourceLoader','ModelRegistry','AuthStorage','getAgentDir','SessionManager'];const missing=need.filter(n=>typeof p[n]!=='function'&&typeof p[n]!=='object');if(missing.length){console.error('MISSING runtime exports:',missing);process.exit(1)}console.log('all-exports-real')})"
-# expect: all-exports-real
+node --input-type=module -e "import('@mariozechner/pi-coding-agent').then(p=>{const need=['createAgentSession','DefaultResourceLoader','ModelRegistry','AuthStorage','getAgentDir','SessionManager'];const missing=need.filter(n=>typeof p[n]!=='function'&&typeof p[n]!=='object');if(missing.length){console.error('MISSING runtime exports:',missing);process.exit(1)}console.log('all-exports-real')})" || { echo "FAIL OOB: a §0.2/§0.3 symbol is type-only or non-existent — fix the doc/recipe before ✅"; exit 1; }
 # 2. The ESM-only fact the doc warns about is actually true (sanity — guards a future pi that adds CJS):
-node -e "require('@mariozechner/pi-coding-agent')" 2>&1 | grep -q "ERR_PACKAGE_PATH_NOT_EXPORTED" && echo esm-only-confirmed
-# expect: esm-only-confirmed   (if this prints nothing, pi gained a CJS entry — update §0.2's ESM warning before ✅)
+node -e "require('@mariozechner/pi-coding-agent')" 2>&1 | grep -q "ERR_PACKAGE_PATH_NOT_EXPORTED" || { echo "FAIL OOB: pi no longer throws on require() — it gained a CJS entry; update §0.2's ESM warning before ✅"; exit 1; }
+echo "oob-ok"   # expect: oob-ok
 ```
-If `all-exports-real` does not print, a symbol you recorded in §0.2/§0.3 is a type-only or non-existent export — fix the doc/recipe before marking the phase done.
+If this exits non-zero (not the SKIP path), a symbol you recorded in §0.2/§0.3 is wrong or the ESM-only fact changed — fix the doc/recipe before marking the phase done.
 
 ## Phase gate
 `docs/PI-SDK-SURFACE.md` exists and is complete (§0.1.1–0.1.5 + §0.2 + §0.3); **both unknowns (system-prompt mechanism, local-model registration) are resolved with file:line + a recipe that typechecks**; pi pinned to exact `0.73.1`; `ONBOARDING.md` "Resume here:" points at F1 with the real baseline. No product code under `src/` changed (only `tests/test_fork0_recipe.test.ts` added).
@@ -474,3 +519,33 @@ Audited-by: <auditor-model> (verdict: pass)
 Directed-by: human
 Tool: kiri-code
 ```
+
+## Auditor checklist (the independent auditor runs THESE to confirm F0's hat-compliance — `prompts/auditor.md` step 1.5)
+> A green suite does NOT excuse a missing/circumvented guard. Run each line; any failure is a finding (`blocked` if a guard was deleted/`.skip`-ed/narrowed or the pre-flight is prose-only, else `patches-applied`).
+```bash
+set -e
+cd "$(git rev-parse --show-toplevel)"
+F=plan/FORK-PHASE-0-baseline.md
+# 1. Pre-flight is an EXECUTABLE gate (set -e + a STOP/exit-non-zero), not skippable prose:
+grep -q "Pre-flight — EXECUTABLE gate" "$F" && grep -q 'exit 1' "$F" || { echo "AUDIT-FAIL: pre-flight not an executable exit-non-zero gate"; exit 1; }
+# 2. The pre-flight captures + persists PHASE_0_BASE (baseline establisher), and counts are BASE-relative — no copied absolutes:
+grep -q "PHASE_0_BASE: \$BASE" "$F" && grep -q "grep '^PHASE_0_BASE:' ONBOARDING.md" "$F" || { echo "AUDIT-FAIL: BASE not captured/persisted/read-back"; exit 1; }
+grep -qE '# expect: Tests +73 passed|# expect: Tests +76 passed' "$F" && { echo "AUDIT-FAIL: hardcoded absolute test count survived (should be BASE+delta)"; exit 1; } || true
+# 3. The phase records the REAL pi surface (frozen ground truth F1 reads): thinkingLevel (not thinking) + the 'no systemPrompt' correction in the DoD:
+grep -q "thinkingLevel" "$F" || { echo "AUDIT-FAIL: thinkingLevel not asserted"; exit 1; }
+grep -qE "NO .systemPrompt|no systemPrompt" "$F" || { echo "AUDIT-FAIL: 'no systemPrompt' DoD assertion missing"; exit 1; }
+# 4. DoD and OOB are executable gates (|| exit 1), not prose:
+grep -q "Definition of Done — EXECUTABLE checklist" "$F" && grep -q "DoD-ok" "$F" || { echo "AUDIT-FAIL: DoD not executable"; exit 1; }
+grep -q "Out-of-band recheck — EXECUTABLE smoke" "$F" && grep -q "oob-ok" "$F" || { echo "AUDIT-FAIL: OOB not executable"; exit 1; }
+# 5. Frozen recipe tests are asserted present & un-skipped in the DoD (existence + run-state, not just value):
+grep -q 'grep -q "test_t0_2" tests/test_fork0_recipe.test.ts' "$F" || { echo "AUDIT-FAIL: DoD does not assert frozen tests exist"; exit 1; }
+grep -q 'a recipe test is .skip/.only' "$F" || { echo "AUDIT-FAIL: DoD does not forbid .skip/.only on frozen tests"; exit 1; }
+# 6. The ingredient-coverage manifest is the VERY LAST line:
+tail -1 "$F" | grep -qE "^Ingredients present:" || { echo "AUDIT-FAIL: coverage manifest is not the last line"; exit 1; }
+# 7. Independently re-run the phase's own DoD + OOB blocks against the executor's committed work (they must pass):
+echo "AUDIT: now extract and run the 'Definition of Done' and 'Out-of-band recheck' bash blocks from $F — both must print their ok-sentinel."
+echo "auditor-checklist-ok"   # expect: auditor-checklist-ok (then run DoD + OOB)
+```
+Also confirm by hand: the API-hazards table still matches the real `.d.ts` (`CreateAgentSessionOptions` 14 fields at `sdk.d.ts:11-55`, `thinkingLevel` at `:23`, `continueSession` JSDoc-lie at `:88`, `KnownApi` has `openai-completions` / `KnownProvider` lacks vLLM at `pi-ai types.d.ts:4,6`) — a doc that drifted its own ground truth is a `blocked` finding.
+
+Ingredients present: 0✓ (Pre-flight prereq hard-gate: pi-dist `test -d … || exit 1`, F0 is first fork phase so pi-install is the sole hard prereq) · 1✓ (header "Failure class this guards" — F1 inheriting an imagined surface) · 2✓ (Binding discipline §, rule 6 names the frozen set incl. existence/run-state/input-domain) · 3✓ (Pre-flight EXECUTABLE gate captures+persists `PHASE_0_BASE`; every count BASE+delta) · 4✓ (API hazards table, grounded `file:line`, incl. JSDoc-vs-interface lies) · 5✓ (External inputs: §0.3 recipe's vLLM `baseUrl`/`modelId` are params + the OOB is gated/skippable on pi-install presence; F0 writes no code that binds a per-machine path) · 6∅ (n/a: doc-production phase, no product code — per the hat's "Non-code phases" rule each task verifies via grep/value/`tsc --noEmit` recipe-compile, not a product vitest; tasks 0.2–0.4 still ship isolated `mkdtemp` recipe typecheck tests, idempotent check-before-create on 0.1) · 7✓ (Decision tree: §0.2 Path A tsc-present / Path B tsc-sandboxed, with code for each, reused in 0.3) · 8✓ (Anti-fabrication guardrail per task: "copied from an open `.d.ts`", "`NOT FOUND` not a guess", baseline = literal `PHASE_0_BASE`) · 9✓ (Definition of Done — EXECUTABLE `set -e … || exit 1`, count = `BASE`+delta read from ONBOARDING, asserts frozen tests exist+un-skipped+real-target, ends "Do not advance") · 10✓ (Out-of-band recheck — EXECUTABLE `|| exit 1`, gated/skippable with KNOWN_ISSUES note if pi absent) · 11✓ (Commit template with `Implemented-by`/`Audited-by`/`Directed-by`/`Tool` trailers) · 12✓ (`## Auditor checklist` block, this section)
