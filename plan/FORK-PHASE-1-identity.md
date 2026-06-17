@@ -169,15 +169,19 @@ Pick **A** unless the human says CLI-only. **License (DEC-3, human decides):** m
 
 ---
 
-## Definition of Done (falsifiable — if any line is false, NOT done)
+## Definition of Done (falsifiable EXECUTABLE checklist — exits non-zero on any failure)
 ```bash
-node dist/src/cli.js --version | grep -qx "kiri-code 0.1.0" && echo ok-version
-npm install --omit=dev >/dev/null 2>&1 && node dist/src/cli.js --version >/dev/null && echo ok-prod-deps
-BASE=$(grep '^PHASE_1_BASE:' ONBOARDING.md | sed -E 's/.*:[[:space:]]*([0-9]+).*/\1/'); NOW=$(npm test 2>&1 | grep -oE '[0-9]+ passed' | head -1 | grep -oE '^[0-9]+'); test "$NOW" -eq "$((BASE + 5))" && echo ok-count   # expect: ok-count  (BASE + 5 fork1 tests, BASE read from ONBOARDING — never a hardcoded absolute)
-git status --porcelain                  # expect: empty
-git log --oneline | grep -c "fork1 task"  # expect: >= 5
+set -e
+node dist/src/cli.js --version | grep -qx "kiri-code 0.1.0" || { echo "FAIL: version"; exit 1; }
+npm install --omit=dev >/dev/null 2>&1 && node dist/src/cli.js --version >/dev/null || { echo "FAIL: prod-only deps don't boot"; exit 1; }
+BASE=$(grep '^PHASE_1_BASE:' ONBOARDING.md | sed -E 's/.*:[[:space:]]*([0-9]+).*/\1/'); NOW=$(npm test 2>&1 | grep -oE '[0-9]+ passed' | head -1 | grep -oE '^[0-9]+'); test "$NOW" -eq "$((BASE + 5))" || { echo "FAIL: expected BASE+5 tests (BASE read from ONBOARDING, never a hardcoded absolute)"; exit 1; }
+test -z "$(git status --porcelain)" || { echo "FAIL: working tree dirty"; exit 1; }
+test "$(git log --oneline | grep -c 'fork1 task')" -ge 5 || { echo "FAIL: fewer than 5 fork1 task commits"; exit 1; }
+echo "DoD: all green"
 ```
-- [ ] all five `# expect`s match · [ ] pi in `dependencies` · [ ] booted session uses the kiri prompt (T1.3) · [ ] no `systemPrompt:` invented anywhere · [ ] index/license resolved.
+- [ ] DoD block exits 0 · [ ] pi in `dependencies` · [ ] booted session uses the kiri prompt (T1.3) · [ ] no `systemPrompt:` invented anywhere · [ ] index/license resolved.
+
+**If any line is false, the phase is not done. Do not advance.**
 
 ## Out-of-band recheck (before marking ✅) — gated/skippable on the model being configured (ingredient 5/10)
 ```bash
@@ -201,3 +205,17 @@ Audited-by: <auditor-model> (verdict: pass)
 Directed-by: human
 Tool: kiri-code
 ```
+
+## Auditor checklist
+The independent auditor (`prompts/auditor.md`) runs these to confirm hat-compliance before any "done":
+```bash
+set -e
+grep -q 'set -e' plan/FORK-PHASE-1-identity.md || { echo "FINDING(blocked): pre-flight/DoD not executable gates"; exit 1; }
+grep -q 'PHASE_1_BASE' plan/FORK-PHASE-1-identity.md || { echo "FINDING(blocked): BASE not persisted/read-back"; exit 1; }
+grep -q 'DefaultResourceLoader' plan/FORK-PHASE-1-identity.md || { echo "FINDING: prompt mechanism not named (must be DefaultResourceLoader, not invented)"; exit 1; }
+grep -q 'not.toMatch(/You are pi' plan/FORK-PHASE-1-identity.md || { echo "FINDING: T1.3 doesn't prove pi's default prompt is REPLACED"; exit 1; }
+if [ -f tests/test_fork1.test.ts ] && grep -nE 'toBeTruthy\(\)|toBeGreaterThan\(0\)|typeof[^=]*toBe\(' tests/test_fork1.test.ts; then echo "FINDING(blocked): toothless assertion in fork1 tests"; exit 1; fi
+echo "auditor checklist: pass"
+```
+
+Ingredients present: 0✓ (Pre-flight prereq gate: `docs/PI-SDK-SURFACE.md`/F0) · 1✓ (Failure-class header) · 2✓ (Binding discipline 1–5) · 3✓ (Pre-flight EXECUTABLE gate + `PHASE_1_BASE` persist; counts BASE-relative) · 4✓ (API-hazards table — grounded: no `systemPrompt`, `thinkingLevel`, ESM-only) · 5✓ (external input: `KIRI_MODEL` env+STOP in OOB) · 6✓ (T1.1–T1.5: failing test first · skeleton/diff · verify w/ `# expect` · commit+trailers+ONBOARDING) · 7✓ (T1.5 decision tree Path A/B + license tree) · 8✓ (anti-fabrication: "wire the F0 recipe — do NOT invent the SDK wiring") · 9✓ (Definition of Done — EXECUTABLE, BASE-relative, "Do not advance") · 10✓ (OOB recheck — EXECUTABLE, gated/skippable on `KIRI_MODEL`) · 11✓ (commit template w/ trailers) · 12✓ (this `## Auditor checklist`)
