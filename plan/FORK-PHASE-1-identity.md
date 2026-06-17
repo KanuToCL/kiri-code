@@ -118,7 +118,7 @@ it("test_t1_3_system_prompt_is_kiri_not_pi", async () => {
 ```
 Run → **expect: 1 failed**.
 
-**Skeleton** — in `src/boot.ts`, build the prompt from `prompts/pi-discipline.md` + `CLAUDE.md`, applied via the F0 mechanism (e.g., `.pi/SYSTEM.md` discovery / `PromptTemplate` / settings — whichever §0.2 confirmed):
+**Skeleton** — in `src/boot.ts`, build the prompt from `prompts/pi-discipline.md` + `CLAUDE.md`, applied via the **F0-confirmed mechanism: `DefaultResourceLoader({ systemPrompt })` → `getSystemPrompt()`** (replace pi's default, do not append; the exact recipe is in `docs/PI-SDK-SURFACE.md §0.2` — wire that, don't re-derive or list alternatives). This sets the **static base** prompt only; **per-turn** discipline re-injection (re-ground, etc.) is the F-N nudge layer's job via the `before_agent_start` hook — keep the two layers separate:
 ```ts
 import { readFileSync } from "fs";
 export function getEffectiveSystemPrompt(_o: { cwd: string }) {
