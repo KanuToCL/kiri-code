@@ -56,8 +56,9 @@ The single source for "the phases." Each = one scoped file Qwen works task-by-ta
 | # | Phase | Delivers | Scoped file | Deps | Status |
 |---|---|---|---|---|---|
 | **H** | Hardening | 11 P0s + safety modules (gate/cost-ledger/redact/atomic-file) | audit work order ✅ | — | planned |
-| **F1** | Identity / SDK-wrap | kiri bin · system prompt · `createAgentSession` · deps · index/license | `FORK-PHASE-1` | H | to author |
-| **F2** | Skills bundle | MANIFEST · vendor · `loadSkillsFromDir` · ban-token | `FORK-PHASE-2` | F1 | to author |
+| **F0** | Baseline | snapshot pi SDK surface; resolve prompt + local-model mechanisms | `FORK-PHASE-0-baseline` ✅ | — | planned |
+| **F1** | Identity / SDK-wrap | SDK-wrap default cmd · system prompt · runtime deps · index/license | `FORK-PHASE-1` ✅ | F0 | planned |
+| **F2** | Skills bundle | MANIFEST · vendor · `loadSkillsFromDir` · ban-token | `FORK-PHASE-2` ✅ | F1 | planned |
 | **F6** | Wiggum loop | W1–W7 (loop + long-horizon) — **demo milestone** | `FORK-PHASE-6-wiggum` ✅ | H,F1,F2 | planned |
 | **F-N** | Nudge system | deterministic lifecycle nudges + canonical-docs `re-ground` | `FORK-PHASE-N-nudges` ✅ | F1 | planned |
 | **F3** | Consult internalize | consult fires from the core | `FORK-PHASE-3` | F1 | to author |
